@@ -1,9 +1,10 @@
 import os
-from flask import Flask, redirect, request
+from flask import Flask, redirect, request, jsonify
 from dotenv import load_dotenv
 import requests
 from flask_sqlalchemy import SQLAlchemy
 import json
+from flask_cors import CORS
 
 # Load environment variables from .env file
 load_dotenv()
@@ -14,6 +15,8 @@ app = Flask(__name__, instance_relative_config=True)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
+
+CORS(app)
 
 # Definieer het databasemodel voor atleten
 class Athlete(db.Model):
@@ -97,6 +100,9 @@ def strava_callback():
 
     if activities_response.status_code != 200:
         return f"Error fetching activities: {activities_data.get('message', 'Unknown error')}", 500
+
+    # Stuur de gebruiker terug naar de frontend met de tokens
+    return redirect(f"http://localhost:8081/activities?access_token={access_token}&refresh_token={refresh_token}")
 
     # Maak een simpele HTML-pagina om de activiteiten weer te geven
     output = "<h1>Your Recent Strava Activities</h1>"
