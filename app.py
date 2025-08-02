@@ -2,11 +2,29 @@ import os
 from flask import Flask, redirect, request
 from dotenv import load_dotenv
 import requests
+from flask_sqlalchemy import SQLAlchemy
+import json
 
 # Load environment variables from .env file
 load_dotenv()
 
 app = Flask(__name__, instance_relative_config=True)
+
+# Configureer de database
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
+
+# Definieer het databasemodel voor atleten
+class Athlete(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    athlete_id = db.Column(db.Integer, unique=True, nullable=False)
+    access_token = db.Column(db.String(255), nullable=False)
+    refresh_token = db.Column(db.String(255), nullable=False)
+    expires_at = db.Column(db.Integer, nullable=False)
+
+def __repr__(self):
+    return f"Athlete('{self.athlete_id}')"
 
 # Strava API credentials from .env
 STRAVA_CLIENT_ID = os.getenv("STRAVA_CLIENT_ID")
@@ -38,7 +56,7 @@ def strava_callback():
     if not code:
         return "Authorization failed or was denied.", 400
 
-    # Wissel de autorisatiecode in voor een access_token
+    # Wissel code in voor token
     token_url = "https://www.strava.com/oauth/token"
     payload = {
         "client_id": STRAVA_CLIENT_ID,
@@ -46,26 +64,53 @@ def strava_callback():
         "code": code,
         "grant_type": "authorization_code"
     }
-
     response = requests.post(token_url, data=payload)
     token_data = response.json()
 
     if response.status_code != 200:
         return f"Error while exchanging code for token: {token_data.get('message', 'Unknown error')}", 500
 
-    access_token = token_data.get("access_token")
+    # Haal de tokens en atleet-ID op
+    athlete_id = token_data['athlete']['id']
+    access_token = token_data['access_token']
+    refresh_token = token_data['refresh_token']
+    expires_at = token_data['expires_at']
 
-    # Nu gebruiken we de access_token om de atleetgegevens op te vragen
-    athlete_url = "https://www.strava.com/api/v3/athlete"
+    # Sla de gegevens van de atleet op in de database
+    athlete = Athlete.query.filter_by(athlete_id=athlete_id).first()
+    if athlete:
+        athlete.access_token = access_token
+        athlete.refresh_token = refresh_token
+        athlete.expires_at = expires_at
+    else:
+        new_athlete = Athlete(athlete_id=athlete_id, access_token=access_token, refresh_token=refresh_token, expires_at=expires_at)
+        db.session.add(new_athlete)
+
+    db.session.commit()
+
+    # Gebruik de access_token om de activiteiten van de atleet op te vragen
+    activities_url = "https://www.strava.com/api/v3/athlete/activities"
     headers = {"Authorization": f"Bearer {access_token}"}
-    
-    athlete_response = requests.get(athlete_url, headers=headers)
-    athlete_data = athlete_response.json()
 
-    if athlete_response.status_code != 200:
-        return f"Error fetching athlete data: {athlete_data.get('message', 'Unknown error')}", 500
+    activities_response = requests.get(activities_url, headers=headers)
+    activities_data = activities_response.json()
 
-    return athlete_data
+    if activities_response.status_code != 200:
+        return f"Error fetching activities: {activities_data.get('message', 'Unknown error')}", 500
+
+    # Maak een simpele HTML-pagina om de activiteiten weer te geven
+    output = "<h1>Your Recent Strava Activities</h1>"
+    output += "<ul>"
+    for activity in activities_data:
+        name = activity.get('name')
+        distance_meters = activity.get('distance')
+        distance_km = round(distance_meters / 1000, 2)
+        activity_type = activity.get('type')
+            
+        output += f"<li><strong>{name}</strong> - {distance_km} km ({activity_type})</li>"
+    output += "</ul>"
+
+    return output
 
 if __name__ == "__main__":
     app.run(port=5000)
