@@ -52,6 +52,37 @@ def index():
                 f"scope=activity:read_all")
     return redirect(auth_url)
 
+@app.route("/api/tokens")
+def get_tokens():
+    # Haal de meest recente atleet uit de database
+    athlete = Athlete.query.first()
+    if athlete:
+        return jsonify({
+            "access_token": athlete.access_token,
+            "refresh_token": athlete.refresh_token
+        })
+    else:
+        return jsonify({"error": "Geen atleet gevonden in de database."}), 404
+
+@app.route("/api/activities")
+def get_activities():
+    athlete = Athlete.query.first()
+    if not athlete:
+        return jsonify({"error": "Geen atleet gevonden in de database."}), 404
+
+    access_token = athlete.access_token
+
+    # Gebruik de access_token om de activiteiten van Strava op te halen
+    headers = {'Authorization': f'Bearer {access_token}'}
+    strava_url = "https://www.strava.com/api/v3/athlete/activities"
+
+    try:
+        response = requests.get(strava_url, headers=headers)
+        response.raise_for_status()  # Check op HTTP-fouten
+        return jsonify(response.json())
+    except requests.exceptions.RequestException as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/strava/callback")
 def strava_callback():
     code = request.args.get("code")
