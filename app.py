@@ -53,12 +53,19 @@ def strava_callback():
     if response.status_code != 200:
         return f"Error while exchanging code for token: {token_data.get('message', 'Unknown error')}", 500
 
-    # We hebben nu de tokens! Voor nu printen we ze alleen maar
     access_token = token_data.get("access_token")
-    refresh_token = token_data.get("refresh_token")
-    expires_at = token_data.get("expires_at")
 
-    return f"Authorization successful!<br>Access Token: {access_token}<br>Refresh Token: {refresh_token}<br>Expires At: {expires_at}"
+    # Nu gebruiken we de access_token om de atleetgegevens op te vragen
+    athlete_url = "https://www.strava.com/api/v3/athlete"
+    headers = {"Authorization": f"Bearer {access_token}"}
+    
+    athlete_response = requests.get(athlete_url, headers=headers)
+    athlete_data = athlete_response.json()
+
+    if athlete_response.status_code != 200:
+        return f"Error fetching athlete data: {athlete_data.get('message', 'Unknown error')}", 500
+
+    return athlete_data
 
 if __name__ == "__main__":
     app.run(port=5000)
