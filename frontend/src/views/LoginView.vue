@@ -1,0 +1,127 @@
+<template>
+  <div class="auth-page">
+    <div class="auth-form">
+      <h1>Login to Your Account</h1>
+      <form @submit.prevent="handleLogin">
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <input type="email" id="email" v-model="email" required />
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" v-model="password" required />
+        </div>
+        <div v-if="error" class="error-message">{{ error }}</div>
+        <button type="submit" class="submit-button">Login</button>
+      </form>
+      <p class="switch-link">
+        Don't have an account?
+        <router-link to="/register">Register</router-link>
+      </p>
+    </div>
+  </div>
+</template>
+
+<script>
+import axios from "axios";
+import { auth } from "../auth";
+
+export default {
+  name: "LoginView",
+  data() {
+    return {
+      email: "",
+      password: "",
+      error: null,
+    };
+  },
+  methods: {
+    async handleLogin() {
+      this.error = null;
+      try {
+        const response = await axios.post(
+          "http://localhost:5000/auth/login",
+          {
+            email: this.email,
+            password: this.password,
+          },
+          { withCredentials: true }
+        );
+
+        auth.isLoggedIn = true;
+        auth.user = response.data;
+
+        // Check if there's a redirect URL in the query
+        const redirectPath = this.$route.query.redirect;
+        if (redirectPath) {
+          // If yes, go back to that page, preserving any other query params like 'action=save'
+          this.$router.push(
+            this.$route.fullPath.substring(this.$route.path.length)
+          );
+        } else {
+          // Otherwise, go to the homepage
+          this.$router.push("/");
+        }
+      } catch (err) {
+        this.error =
+          err.response?.data?.error || "An unexpected error occurred.";
+      }
+    },
+  },
+};
+</script>
+
+<style scoped>
+/* (Stijlen gedeeld met RegisterView, zie hieronder) */
+.auth-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding-top: 50px;
+}
+.auth-form {
+  width: 100%;
+  max-width: 400px;
+  padding: 30px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+h1 {
+  margin-bottom: 20px;
+}
+.form-group {
+  margin-bottom: 15px;
+  text-align: left;
+}
+label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  box-sizing: border-box;
+}
+.submit-button {
+  width: 100%;
+  padding: 12px;
+  background-color: #fc4c02;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-size: 1.1em;
+  font-weight: bold;
+  cursor: pointer;
+}
+.error-message {
+  color: #dc3545;
+  margin-bottom: 15px;
+}
+.switch-link {
+  margin-top: 20px;
+}
+</style>
