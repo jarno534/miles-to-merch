@@ -7,14 +7,26 @@
         any device.
       </p>
 
+      <!-- This box now changes based on your login status -->
       <div class="choice-box">
-        <h2>Use a Strava Activity</h2>
-        <p>
-          Connect your Strava account to select from your recent activities.
-        </p>
-        <button @click="useStrava" class="strava-button">
-          Connect with Strava
-        </button>
+        <div v-if="auth.isLoggedIn && auth.user.has_strava_linked">
+          <h2>Use a Strava Activity</h2>
+          <p>
+            Your account is linked. Select an activity to start your design.
+          </p>
+          <button @click="useStrava" class="strava-button">
+            Select a Strava Activity
+          </button>
+        </div>
+        <div v-else>
+          <h2>Use a Strava Activity</h2>
+          <p>
+            Connect your Strava account to select from your recent activities.
+          </p>
+          <button @click="useStrava" class="strava-button">
+            Connect with Strava
+          </button>
+        </div>
       </div>
 
       <div class="choice-box">
@@ -39,7 +51,7 @@
 </template>
 
 <script>
-import { auth } from "../auth";
+import { auth } from "../auth"; // <-- Import the auth state
 import gpxParser from "gpxparser";
 
 export default {
@@ -53,14 +65,18 @@ export default {
   data() {
     return {
       gpxError: null,
+      auth: auth, // <-- Expose the auth state to the template
     };
   },
   methods: {
     useStrava() {
+      // This logic already handles both cases correctly
       localStorage.setItem("selectedProductId", this.productId);
       if (auth.isLoggedIn && auth.user.has_strava_linked) {
+        // If already logged in and linked, go straight to activities
         this.$router.push({ name: "Activities" });
       } else {
+        // If not logged in, or not linked, start the linking/login process
         window.location.href = "http://localhost:5000/auth/login/strava";
       }
     },
@@ -87,7 +103,6 @@ export default {
           }
 
           const activityData = this.formatGpxData(gpx);
-
           const gpxSessionKey = `gpx_${Date.now()}`;
           localStorage.setItem(gpxSessionKey, JSON.stringify(activityData));
 
@@ -113,20 +128,18 @@ export default {
       const track = gpx.tracks[0];
       const points = track.points;
 
-      // Create streams, ensuring data exists
       const streams = {
         latlng: { data: points.map((p) => [p.lat, p.lon]) },
-        altitude: { data: points.map((p) => p.ele || 0) }, // Default to 0 if elevation is missing
+        altitude: { data: points.map((p) => p.ele || 0) },
         time: { data: points.map((p) => new Date(p.time).getTime() / 1000) },
       };
 
-      // Create details, with fallbacks for missing data
       const details = {
         name: track.name || "My GPX Activity",
         distance: track.distance ? track.distance.total : 0,
         moving_time: track.duration ? track.duration.moving : 0,
         total_elevation_gain: track.elevation ? track.elevation.pos : 0,
-        start_date: points[0].time
+        start_date: points[0]?.time
           ? points[0].time.toISOString()
           : new Date().toISOString(),
         start_latlng: points[0] ? [points[0].lat, points[0].lon] : [0, 0],

@@ -4,13 +4,13 @@
       <h1>Miles to Merch</h1>
       <p>Choose your favorite item and immortalize your achievement.</p>
     </div>
-    <div v-if="loading" class="loading">Loading products...</div>
+    <SpinnerComponent v-if="loading" text="Loading products..." />
     <div v-else class="product-grid">
       <div
         v-for="product in products"
         :key="product.id"
         class="product-card"
-        @click="viewProductDetails(product.id)"
+        @click="selectProduct(product.id)"
       >
         <img
           :src="product.image_url"
@@ -32,32 +32,54 @@
 
 <script>
 import axios from "axios";
+import SpinnerComponent from "@/components/SpinnerComponent.vue";
 
 export default {
   name: "HomeView",
+  components: { SpinnerComponent },
   data() {
     return {
       products: [],
       loading: true,
+      // This will hold the activity ID if the user came from the activities page
+      preselectedActivityId: null,
     };
   },
-  async created() {
-    try {
-      const response = await axios.get("http://localhost:5000/api/products");
-      this.products = response.data;
-    } catch (error) {
-      console.error("Error fetching products:", error);
-    } finally {
-      this.loading = false;
-    }
+  created() {
+    // Check if an activity was pre-selected
+    this.preselectedActivityId = localStorage.getItem("selectedActivityId");
+    this.fetchProducts();
   },
   methods: {
-    viewProductDetails(productId) {
-      // Navigate to the new product detail page
-      this.$router.push({
-        name: "ProductDetail",
-        params: { productId: productId },
-      });
+    async fetchProducts() {
+      try {
+        const response = await axios.get("http://localhost:5000/api/products");
+        this.products = response.data;
+      } catch (error) {
+        console.error("Error fetching products:", error);
+      } finally {
+        this.loading = false;
+      }
+    },
+    selectProduct(productId) {
+      if (this.preselectedActivityId) {
+        // If an activity was waiting, go straight to the design page
+        this.$router.push({
+          name: "Design",
+          params: {
+            productId: productId,
+            activityId: this.preselectedActivityId,
+          },
+        });
+        // Clean up the stored activity ID
+        localStorage.removeItem("selectedActivityId");
+      } else {
+        // Otherwise, go to the product detail page as normal
+        this.$router.push({
+          name: "ProductDetail",
+          params: { productId: productId },
+        });
+      }
     },
   },
 };

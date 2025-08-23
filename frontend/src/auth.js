@@ -1,13 +1,11 @@
-// src/auth.js
 import { reactive } from "vue";
 import axios from "axios";
 
-// A reactive object to hold our user's state
 export const auth = reactive({
   isLoggedIn: false,
   user: null,
+  isAuthCheckComplete: false, // <-- NIEUWE VLAG
 
-  // A function to check the backend for the current auth status
   async checkAuthStatus() {
     try {
       const response = await axios.get("http://localhost:5000/auth/status", {
@@ -21,9 +19,11 @@ export const auth = reactive({
         this.user = null;
       }
     } catch (error) {
-      console.error("Not authenticated:", error);
+      console.error("Auth check failed:", error);
       this.isLoggedIn = false;
       this.user = null;
+    } finally {
+      this.isAuthCheckComplete = true; // <-- ZET VLAG OP WAAR ALS DE CHECK KLAAR IS
     }
   },
 });

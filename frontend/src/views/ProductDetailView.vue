@@ -1,6 +1,6 @@
 <template>
   <div class="product-detail-page">
-    <div v-if="loading" class="loading">Loading product...</div>
+    <SpinnerComponent v-if="loading" />
     <div v-if="product" class="product-container">
       <div class="product-image-container">
         <img
@@ -37,9 +37,11 @@
 
 <script>
 import axios from "axios";
+import SpinnerComponent from "@/components/SpinnerComponent.vue";
 
 export default {
   name: "ProductDetailView",
+  components: { SpinnerComponent },
   props: {
     productId: {
       type: [String, Number],
@@ -54,10 +56,13 @@ export default {
   },
   async created() {
     try {
-      const response = await axios.get("http://localhost:5000/api/products");
-      this.product = response.data.find((p) => p.id == this.productId);
+      const response = await axios.get(
+        `http://localhost:5000/api/products/${this.productId}`
+      );
+      this.product = response.data;
     } catch (error) {
       console.error("Error fetching product details:", error);
+      this.$router.push({ name: "home" });
     } finally {
       this.loading = false;
     }

@@ -51,15 +51,10 @@ export default {
         auth.isLoggedIn = true;
         auth.user = response.data;
 
-        // Check if there's a redirect URL in the query
         const redirectPath = this.$route.query.redirect;
         if (redirectPath) {
-          // If yes, go back to that page, preserving any other query params like 'action=save'
-          this.$router.push(
-            this.$route.fullPath.substring(this.$route.path.length)
-          );
+          this.$router.push(redirectPath);
         } else {
-          // Otherwise, go to the homepage
           this.$router.push("/");
         }
       } catch (err) {

@@ -48,8 +48,12 @@
       </div>
 
       <div class="payment-section">
-        <button class="place-order-button" :disabled="!isProfileComplete">
-          Place Order (Simulation)
+        <button
+          @click="placeOrder"
+          class="place-order-button"
+          :disabled="!isProfileComplete || isPlacingOrder"
+        >
+          {{ isPlacingOrder ? "Placing Order..." : "Place Order (Simulation)" }}
         </button>
       </div>
     </div>
@@ -58,6 +62,7 @@
 
 <script>
 import axios from "axios";
+import { notifyError } from "../notifications";
 
 export default {
   name: "CheckoutView",
@@ -73,6 +78,7 @@ export default {
       product: null,
       user: null,
       loading: true,
+      isPlacingOrder: false,
     };
   },
   computed: {
@@ -113,6 +119,32 @@ export default {
     } finally {
       this.loading = false;
     }
+  },
+  methods: {
+    async placeOrder() {
+      if (!this.isProfileComplete) return;
+      this.isPlacingOrder = true;
+      try {
+        const response = await axios.post(
+          "http://localhost:5000/api/orders",
+          { design_id: this.design.id },
+          { withCredentials: true }
+        );
+        const newOrder = response.data;
+        this.$router.push({
+          name: "OrderConfirmation",
+          params: { orderId: newOrder.id },
+        });
+      } catch (error) {
+        console.error("Error placing order:", error);
+        notifyError(
+          error.response?.data?.error ||
+            "Could not place the order. Please try again."
+        );
+      } finally {
+        this.isPlacingOrder = false;
+      }
+    },
   },
 };
 </script>

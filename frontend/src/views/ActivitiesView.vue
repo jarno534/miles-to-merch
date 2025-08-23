@@ -1,9 +1,7 @@
 <template>
   <div class="activities-page">
     <h1>Choose an Activity</h1>
-    <div v-if="loading">
-      <p>Loading activities...</p>
-    </div>
+    <SpinnerComponent v-if="loading" text="Loading activities..." />
     <div v-else>
       <ul class="activities-list" v-if="activities.length > 0">
         <li
@@ -32,9 +30,11 @@
 
 <script>
 import axios from "axios";
+import SpinnerComponent from "@/components/SpinnerComponent.vue";
 
 export default {
   name: "ActivitiesView",
+  components: { SpinnerComponent },
   data() {
     return {
       activities: [],
@@ -44,11 +44,6 @@ export default {
   },
   async created() {
     this.productId = localStorage.getItem("selectedProductId");
-    if (!this.productId) {
-      console.error("No product selected. Redirecting to home.");
-      this.$router.push({ name: "home" });
-      return;
-    }
 
     try {
       const response = await axios.get("http://localhost:5000/api/activities", {
@@ -58,6 +53,7 @@ export default {
     } catch (error) {
       console.error("Error fetching activities:", error);
       if (error.response && error.response.status === 401) {
+        alert("Please connect with Strava to view activities.");
         this.$router.push({ name: "home" });
       }
       this.activities = [];
@@ -79,16 +75,19 @@ export default {
       return `${hours}h ${minutes}m`;
     },
     selectActivity(activityId) {
-      // Navigate to the design page, passing BOTH IDs
-      this.$router.push({
-        name: "Design",
-        params: {
-          productId: this.productId,
-          activityId: activityId,
-        },
-      });
-      // Clean up the stored ID, we don't need it anymore
-      localStorage.removeItem("selectedProductId");
+      if (this.productId) {
+        this.$router.push({
+          name: "Design",
+          params: {
+            productId: this.productId,
+            activityId: activityId,
+          },
+        });
+        localStorage.removeItem("selectedProductId");
+      } else {
+        localStorage.setItem("selectedActivityId", activityId);
+        this.$router.push({ name: "home" });
+      }
     },
   },
 };

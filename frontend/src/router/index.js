@@ -57,6 +57,17 @@ const routes = [
     component: () => import("../views/CheckoutView.vue"),
     props: true,
   },
+  {
+    path: "/order-confirmation/:orderId",
+    name: "OrderConfirmation",
+    component: () => import("../views/OrderConfirmationView.vue"),
+    props: true,
+  },
+  {
+    path: "/my-orders",
+    name: "MyOrders",
+    component: () => import("../views/MyOrdersView.vue"),
+  },
 ];
 
 const router = createRouter({

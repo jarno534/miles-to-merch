@@ -1,7 +1,7 @@
 <template>
   <div class="my-designs-page">
     <h1>My Designs</h1>
-    <div v-if="loading" class="loading">Loading your designs...</div>
+    <SpinnerComponent v-if="loading" text="Loading your designs..." />
     <div v-else-if="designs.length === 0" class="no-designs">
       <p>You haven't saved any designs yet.</p>
       <router-link to="/" class="cta-button">Start Creating</router-link>
@@ -9,7 +9,14 @@
     <div v-else class="designs-grid">
       <div v-for="design in designs" :key="design.id" class="design-card">
         <div class="card-header">
-          <h3>{{ design.name }}</h3>
+          <div
+            class="design-title"
+            @click="editDesignName(design)"
+            title="Edit name"
+          >
+            <h3>{{ design.name }}</h3>
+            <span class="edit-icon">✏️</span>
+          </div>
           <span>Saved on {{ formatDate(design.created_at) }}</span>
         </div>
         <div class="card-actions">
@@ -30,9 +37,12 @@
 
 <script>
 import axios from "axios";
+import { notifySuccess, notifyError } from "../notifications";
+import SpinnerComponent from "@/components/SpinnerComponent.vue";
 
 export default {
   name: "MyDesignsView",
+  components: { SpinnerComponent },
   data() {
     return {
       designs: [],
@@ -67,6 +77,8 @@ export default {
         year: "numeric",
         month: "long",
         day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
       });
     },
     editDesign(design) {
@@ -75,10 +87,17 @@ export default {
       const activityId = design.design_data.activityId;
       const productId = design.product_id;
 
+      if (!activityId) {
+        alert(
+          "Error: Could not find the original activity for this design. Cannot edit."
+        );
+        return;
+      }
+
       this.$router.push({
         name: "Design",
         params: { productId, activityId },
-        query: { design_id: design.id }, // We pass the design ID as a query parameter
+        query: { design_id: design.id },
       });
     },
     async deleteDesign(designId) {
@@ -89,11 +108,32 @@ export default {
         await axios.delete(`http://localhost:5000/api/designs/${designId}`, {
           withCredentials: true,
         });
-        // Refresh the list after deleting
+        notifySuccess("Design deleted successfully.");
         await this.fetchDesigns();
       } catch (error) {
         console.error("Error deleting design:", error);
-        alert("Could not delete the design. Please try again.");
+        notifyError("Could not delete the design. Please try again.");
+      }
+    },
+    async editDesignName(design) {
+      const newName = prompt("Enter a new name for your design:", design.name);
+
+      // Check if the user entered a new name and didn't just click cancel or leave it empty
+      if (newName && newName.trim() !== "" && newName.trim() !== design.name) {
+        try {
+          const response = await axios.put(
+            `http://localhost:5000/api/designs/${design.id}`,
+            { name: newName.trim() }, // Send the new name in the request body
+            { withCredentials: true }
+          );
+          const index = this.designs.findIndex((d) => d.id === design.id);
+          if (index !== -1) {
+            this.designs[index].name = response.data.name;
+          }
+        } catch (error) {
+          console.error("Error updating design name:", error);
+          alert("Could not update the name. Please try again.");
+        }
       }
     },
   },
@@ -178,5 +218,26 @@ export default {
 }
 .action-button.order:hover {
   background-color: #218838;
+}
+.design-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  border-radius: 5px;
+  padding: 2px 6px;
+  margin: -2px -6px;
+  transition: background-color 0.2s;
+}
+.design-title:hover {
+  background-color: #f0f2f5;
+}
+.design-title .edit-icon {
+  opacity: 0;
+  transition: opacity 0.2s;
+  font-size: 0.8em;
+}
+.design-title:hover .edit-icon {
+  opacity: 0.7;
 }
 </style>

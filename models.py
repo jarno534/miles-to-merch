@@ -6,6 +6,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from extensions import db
 from datetime import datetime
 
+from sqlalchemy import func
+
 class User(db.Model):
     """User model for storing both local and Strava accounts."""
     id = db.Column(db.Integer, primary_key=True)
@@ -13,13 +15,13 @@ class User(db.Model):
     # Account Info
     email = db.Column(db.String(120), unique=True, nullable=True)
     password_hash = db.Column(db.String(128), nullable=True)
-    name = db.Column(db.String(100), nullable=True) # <-- NEW
+    name = db.Column(db.String(100), nullable=True)
     
     # Shipping Info
-    shipping_address = db.Column(db.String(200), nullable=True) # <-- NEW
-    shipping_city = db.Column(db.String(100), nullable=True)    # <-- NEW
-    shipping_zip = db.Column(db.String(20), nullable=True)      # <-- NEW
-    shipping_country = db.Column(db.String(100), nullable=True) # <-- NEW
+    shipping_address = db.Column(db.String(200), nullable=True)
+    shipping_city = db.Column(db.String(100), nullable=True)
+    shipping_zip = db.Column(db.String(20), nullable=True)
+    shipping_country = db.Column(db.String(100), nullable=True)
 
     # Strava Info
     strava_id = db.Column(db.Integer, unique=True, nullable=True)
@@ -27,7 +29,7 @@ class User(db.Model):
     refresh_token = db.Column(db.String(128), nullable=True)
     expires_at = db.Column(db.Integer, nullable=True)
     
-    designs = db.relationship('Design', backref='user', lazy=True)
+    designs = db.relationship('Design', backref='user', lazy=True, cascade="all, delete-orphan")
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -47,9 +49,7 @@ class User(db.Model):
             'has_strava_linked': self.strava_id is not None
         }
 
-# De Product en Design modellen blijven ongewijzigd
 class Product(db.Model):
-    # ... (geen wijzigingen hier)
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=True)
@@ -64,7 +64,6 @@ class Product(db.Model):
         }
 
 class Design(db.Model):
-    # ... (geen wijzigingen hier)
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
@@ -77,4 +76,31 @@ class Design(db.Model):
             'id': self.id, 'user_id': self.user_id, 'product_id': self.product_id,
             'design_data': self.design_data, 'name': self.name,
             'created_at': self.created_at.isoformat()
+        }
+
+class Order(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    design_id = db.Column(db.Integer, db.ForeignKey('design.id'), unique=True, nullable=False) # unique=True to ensure a design is ordered only once
+    
+    order_status = db.Column(db.String(50), nullable=False, default='Pending')
+    total_price = db.Column(db.Float, nullable=False)
+    order_date = db.Column(db.DateTime, server_default=func.now())
+    
+    shipping_name = db.Column(db.String(100))
+    shipping_address = db.Column(db.String(200))
+    shipping_city = db.Column(db.String(100))
+    shipping_zip = db.Column(db.String(20))
+    shipping_country = db.Column(db.String(100))
+
+    user = db.relationship('User', backref=db.backref('orders', lazy=True, cascade="all, delete-orphan"))
+    design = db.relationship('Design', backref=db.backref('order', uselist=False))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'order_status': self.order_status,
+            'total_price': self.total_price,
+            'order_date': self.order_date.isoformat(),
+            'design_id': self.design_id
         }

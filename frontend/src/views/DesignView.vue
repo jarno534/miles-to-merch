@@ -1474,6 +1474,8 @@ import L from "leaflet";
 import GraphComponent from "@/components/GraphComponent.vue";
 import QRCode from "qrcode";
 import { auth } from "../auth";
+import html2canvas from "html2canvas";
+import { notifySuccess, notifyError, notifyInfo } from "../notifications";
 
 const gradientColorSchemes = {
   velocity_smooth: { label: "Speed", min: "#a3d5ff", max: "#003b80" },
@@ -2166,31 +2168,45 @@ export default {
 
   methods: {
     async saveDesign() {
-      // 1. Check if the user is logged in
       if (!auth.isLoggedIn) {
-        alert("Please log in or create an account to save your design.");
-
-        // 2. Save the current design to localStorage so we don't lose it
-        localStorage.setItem(
-          "unsavedGpxDesign",
-          JSON.stringify(this.designState)
-        );
-
-        // 3. Redirect to the login page with instructions to return here
+        notifyInfo("Please log in or create an account to save your design.");
+        localStorage.setItem("unsavedDesign", JSON.stringify(this.designState));
         this.$router.push({
-          name: "Login",
-          query: {
-            // Tell the login page where to redirect back to
-            redirect: this.$route.fullPath,
-            // Tell the design page to trigger a save upon return
-            action: "save",
-          },
+          name: "Register",
+          query: { redirect: this.$route.fullPath },
         });
-        return; // Stop the function here
+        return;
       }
 
-      // If we reach here, the user is logged in, and we can save normally.
-      const designDataToSave = this.designState;
+      const canvasElement = this.$refs.tshirtMockup;
+      if (!canvasElement) {
+        notifyError("Could not find the design element to capture.");
+        return;
+      }
+
+      const previouslySelected = this.selectedElement;
+      this.deselectAll();
+
+      let designImageDataUrl = "";
+      try {
+        const canvas = await html2canvas(canvasElement, {
+          backgroundColor: null,
+          useCORS: true,
+        });
+        designImageDataUrl = canvas.toDataURL("image/png");
+      } catch (error) {
+        console.error("Error generating design image:", error);
+        alert("Could not generate a preview of your design. Please try again.");
+        this.selectElement(previouslySelected);
+        return;
+      }
+      this.selectElement(previouslySelected);
+
+      const designDataToSave = {
+        ...this.designState,
+        preview_image: designImageDataUrl,
+        activityId: this.activityId,
+      };
 
       try {
         const payload = {
@@ -2203,11 +2219,11 @@ export default {
           withCredentials: true,
         });
 
-        alert("Design saved successfully!");
-        localStorage.removeItem("unsavedGpxDesign"); // Clean up temp data
+        notifySuccess("Design saved successfully!");
+        localStorage.removeItem("unsavedDesign");
       } catch (error) {
         console.error("Error saving design:", error);
-        alert("Failed to save design. Please try again.");
+        notifyError("Failed to save design. Please try again.");
       }
     },
 
@@ -3664,11 +3680,8 @@ export default {
 
     const gpxKey = this.$route.query.gpx_key;
     const designIdToLoad = this.$route.query.design_id;
-    const postLoginAction = this.$route.query.action;
 
-    // First, fetch the necessary activity data (either from Strava or GPX)
     if (gpxKey) {
-      console.log("Loading design from GPX data key:", gpxKey);
       const gpxDataString = localStorage.getItem(gpxKey);
       if (gpxDataString) {
         this.activityData = JSON.parse(gpxDataString);
@@ -3687,9 +3700,17 @@ export default {
       }
     }
 
-    // Now, decide what design state to load into the editor
-    if (designIdToLoad) {
-      // Editing an existing design from "My Designs"
+    // --- NU BEPALEN WELK ONTWERP GETOOND MOET WORDEN ---
+    const unsavedDesign = localStorage.getItem("unsavedDesign");
+
+    if (auth.isLoggedIn && unsavedDesign) {
+      // SCENARIO 1: Gebruiker is net ingelogd/geregistreerd, laad en bewaar het tijdelijke ontwerp.
+      console.log("User just logged in, attempting to save previous design...");
+      this.loadState(JSON.parse(unsavedDesign));
+      localStorage.removeItem("unsavedDesign"); // Opruimen
+      await this.saveDesign(); // Roep de save-functie aan
+    } else if (designIdToLoad) {
+      // SCENARIO 2: Gebruiker bewerkt een bestaand ontwerp.
       try {
         const response = await axios.get(
           `http://localhost:5000/api/designs/${designIdToLoad}`,
@@ -3699,20 +3720,9 @@ export default {
       } catch (error) {
         console.error("Failed to load existing design:", error);
       }
-    } else if (postLoginAction === "save") {
-      // User just logged in to save their GPX design
-      const unsavedDesign = localStorage.getItem("unsavedGpxDesign");
-      if (unsavedDesign) {
-        this.loadState(JSON.parse(unsavedDesign));
-        // Now that the state is loaded, automatically trigger the save
-        this.saveDesign();
-      }
-    } else {
-      // Standard flow: check for a locally autosaved design
-      const autosavedDesign = localStorage.getItem("autosavedDesign");
-      if (autosavedDesign) {
-        this.loadState(JSON.parse(autosavedDesign));
-      }
+    } else if (unsavedDesign) {
+      // SCENARIO 3: Gebruiker is nog niet ingelogd, maar had een ontwerp in de maak.
+      this.loadState(JSON.parse(unsavedDesign));
     }
 
     this.loading = false;

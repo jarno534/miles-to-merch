@@ -1,9 +1,13 @@
 from flask import Flask, jsonify
+from dotenv import load_dotenv
 from config import Config
 from extensions import db, cors
 from models import Product 
 from routes.auth import auth_bp
 from routes.api import api_bp
+
+load_dotenv()
+
 
 def create_app(config_class=Config):
     """Factory-functie om de Flask-app te maken."""

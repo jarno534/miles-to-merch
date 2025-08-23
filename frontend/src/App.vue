@@ -2,11 +2,14 @@
   <nav class="main-nav">
     <div class="nav-links">
       <router-link to="/">Home</router-link>
-      <router-link v-if="auth.isLoggedIn" to="/my-designs"
-        >My Designs</router-link
-      >
-      |
-      <router-link v-if="auth.isLoggedIn" to="/profile">Profile</router-link>
+      <template v-if="auth.isLoggedIn">
+        <span>&nbsp;|&nbsp;</span>
+        <router-link to="/my-designs">My Designs</router-link>
+        <span>&nbsp;|&nbsp;</span>
+        <router-link to="/my-orders">My Orders</router-link>
+        <span>&nbsp;|&nbsp;</span>
+        <router-link to="/profile">Profile</router-link>
+      </template>
     </div>
     <div class="nav-auth">
       <template v-if="auth.isLoggedIn">
@@ -41,7 +44,6 @@ export default {
         );
         auth.isLoggedIn = false;
         auth.user = null;
-        // Redirect to homepage after logout
         router.push("/");
       } catch (error) {
         console.error("Logout failed:", error);
@@ -54,14 +56,12 @@ export default {
     };
   },
   async created() {
-    // Check login status every time the app is loaded
     await auth.checkAuthStatus();
   },
 };
 </script>
 
 <style>
-/* You can keep your existing #app styles */
 #app {
   font-family: Avenir, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -70,7 +70,6 @@ export default {
   color: #2c3e50;
 }
 
-/* New styles for the navigation bar */
 .main-nav {
   display: flex;
   justify-content: space-between;
@@ -78,6 +77,8 @@ export default {
   padding: 15px 30px;
   background-color: #fff;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  position: relative;
+  z-index: 100;
 }
 
 .nav-links a,

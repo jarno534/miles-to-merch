@@ -7,10 +7,7 @@ from extensions import db
 
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 
-# --- Helper Functies ---
-
 def refresh_strava_token(user):
-    """Vernieuwt de Strava access token voor een gegeven gebruiker."""
     if datetime.now().timestamp() > user.expires_at:
         print(f"Token voor gebruiker {user.strava_id} is verlopen. Bezig met vernieuwen.")
         payload = {
@@ -39,21 +36,29 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# --- API Routes ---
-
 @api_bp.route('/activities')
-@login_required
 def activities():
-    user = User.query.get(session['user_id'])
+    strava_tokens = None
+    
+    if 'user_id' in session:
+        user = User.query.get(session['user_id'])
+        if user and user.access_token:
+            user = refresh_strava_token(user)
+            strava_tokens = {'access_token': user.access_token}
+    elif 'strava_guest_data' in session:
+        strava_tokens = session['strava_guest_data']
+
+    if not strava_tokens:
+        return jsonify({'error': 'Not authenticated with Strava.'}), 401
+
     try:
-        user = refresh_strava_token(user)
-        headers = {'Authorization': f'Bearer {user.access_token}'}
+        headers = {'Authorization': f'Bearer {strava_tokens["access_token"]}'}
         params = {'per_page': 200}
         response = requests.get('https://www.strava.com/api/v3/athlete/activities', headers=headers, params=params)
         response.raise_for_status()
         return jsonify(response.json())
     except requests.exceptions.HTTPError as e:
-        return jsonify({'error': f'Fout bij ophalen van Strava-activiteiten: {e}'}), 500
+        return jsonify({'error': f'Failed to fetch Strava activities: {e}'}), 500
 
 @api_bp.route('/activities/<int:activity_id>')
 @login_required
@@ -83,6 +88,11 @@ def activity_details(activity_id):
 def products():
     return jsonify([p.to_dict() for p in Product.query.all()])
 
+@api_bp.route('/products/<int:product_id>')
+def get_single_product(product_id):
+    product = Product.query.get_or_404(product_id)
+    return jsonify(product.to_dict())
+
 @api_bp.route('/designs', methods=['POST'])
 @login_required
 def create_design():
@@ -101,15 +111,18 @@ def create_design():
 @api_bp.route('/designs')
 @login_required
 def get_designs():
-    user = User.query.get(session['user_id'])
-    return jsonify([d.to_dict() for d in user.designs])
+    """Fetches all designs for the logged-in user, sorted by most recent first."""
+    user_id = session['user_id']
+    
+    designs = Design.query.filter_by(user_id=user_id).order_by(Design.created_at.desc()).all()
+    
+    return jsonify([d.to_dict() for d in designs])
 
 @api_bp.route('/designs/<int:design_id>')
 @login_required
 def get_single_design(design_id):
     """Fetches a single design by its ID."""
     design = Design.query.get_or_404(design_id)
-    # Security check: ensure the design belongs to the logged-in user
     if design.user_id != session['user_id']:
         return jsonify({'error': 'Forbidden'}), 403
     return jsonify(design.to_dict())
@@ -119,13 +132,32 @@ def get_single_design(design_id):
 def delete_design(design_id):
     """Deletes a single design by its ID."""
     design = Design.query.get_or_404(design_id)
-    # Security check
     if design.user_id != session['user_id']:
         return jsonify({'error': 'Forbidden'}), 403
     
     db.session.delete(design)
     db.session.commit()
     return jsonify({'message': 'Design deleted successfully'}), 200
+
+@api_bp.route('/designs/<int:design_id>', methods=['PUT'])
+@login_required
+def update_design(design_id):
+    """Updates a design's name."""
+    design = Design.query.get_or_404(design_id)
+    
+    if design.user_id != session['user_id']:
+        return jsonify({'error': 'Forbidden'}), 403
+
+    data = request.get_json()
+    new_name = data.get('name')
+
+    if not new_name or len(new_name.strip()) == 0:
+        return jsonify({'error': 'A valid name is required'}), 400
+
+    design.name = new_name.strip()
+    db.session.commit()
+    
+    return jsonify(design.to_dict())
 
 @api_bp.route('/profile', methods=['GET'])
 @login_required
@@ -141,7 +173,6 @@ def update_profile():
     user = User.query.get(session['user_id'])
     data = request.get_json()
 
-    # Update fields if they are provided in the request
     user.name = data.get('name', user.name)
     user.email = data.get('email', user.email)
     user.shipping_address = data.get('shipping_address', user.shipping_address)
@@ -151,3 +182,125 @@ def update_profile():
 
     db.session.commit()
     return jsonify(user.to_dict())
+
+@api_bp.route('/orders', methods=['POST'])
+@login_required
+def create_order():
+    """Creates a new order and submits it to Printful."""
+    data = request.get_json()
+    design_id = data.get('design_id')
+
+    if not design_id:
+        return jsonify({'error': 'Design ID is required'}), 400
+
+    user = User.query.get(session['user_id'])
+    design = Design.query.get(design_id)
+    product = Product.query.get(design.product_id)
+
+    if not design or design.user_id != user.id:
+        return jsonify({'error': 'Design not found or not owned by user'}), 404
+    
+    if hasattr(design, 'order') and design.order:
+        return jsonify({'error': 'This design has already been ordered'}), 409
+
+    if not all([user.name, user.shipping_address, user.shipping_city, user.shipping_zip, user.shipping_country]):
+        return jsonify({'error': 'User profile is incomplete'}), 400
+
+    product = Product.query.get(design.product_id)
+    if not product:
+         return jsonify({'error': 'Product associated with design not found'}), 404
+
+    printful_api_key = current_app.config.get('PRINTFUL_API_KEY')
+    if not printful_api_key:
+        return jsonify({'error': 'Printful API key is not configured on the server.'}), 500
+
+    headers = {
+        'Authorization': f'Bearer {printful_api_key}'
+    }
+    
+    design_image_data = design.design_data.get('preview_image')
+
+    printful_payload = {
+        'recipient': {
+            'name': user.name,
+            'address1': user.shipping_address,
+            'city': user.shipping_city,
+            'zip': user.shipping_zip,
+            'country_code': 'BE'
+        },
+        'items': [
+            {
+                'variant_id': product.printful_variant_id or 1,
+                'quantity': 1,
+                'files': [
+                    {
+                        'type': 'default',
+                        'url': design_image_data
+                    }
+                ]
+            }
+        ]
+    }
+
+    try:
+        response = requests.post('https://api.printful.com/orders', headers=headers, json=printful_payload)
+        response.raise_for_status()
+        printful_order = response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"Printful API Error: {e.response.text}")
+        return jsonify({'error': 'Failed to submit order to Printful.'}), 502
+
+    new_order = Order(
+        user_id=user.id,
+        design_id=design.id,
+        total_price=product.price,
+        shipping_name=user.name,
+        shipping_address=user.shipping_address,
+        shipping_city=user.shipping_city,
+        shipping_zip=user.shipping_zip,
+        shipping_country=user.shipping_country,
+        order_status='Submitted to Printful'
+    )
+
+    db.session.add(new_order)
+    db.session.commit()
+
+    return jsonify(new_order.to_dict()), 201
+
+@api_bp.route('/orders', methods=['GET'])
+@login_required
+def get_orders():
+    """Fetches all orders for the logged-in user."""
+    user = User.query.get(session['user_id'])
+    orders = sorted(user.orders, key=lambda o: o.order_date, reverse=True)
+    
+    orders_data = []
+    for order in orders:
+        design = Design.query.get(order.design_id)
+        product = Product.query.get(design.product_id)
+        order_dict = order.to_dict()
+        order_dict['product_name'] = product.name
+        order_dict['product_image_url'] = product.image_url
+        orders_data.append(order_dict)
+        
+    return jsonify(orders_data)
+
+# In routes/api.py
+
+@api_bp.route('/profile/delete', methods=['POST'])
+@login_required
+def delete_profile_with_password():
+    """Deletes the current user after verifying their password."""
+    user = User.query.get(session['user_id'])
+    data = request.get_json()
+    password = data.get('password')
+
+    if not password or not user.check_password(password):
+        return jsonify({'error': 'Incorrect password'}), 401
+
+    db.session.delete(user)
+    db.session.commit()
+    
+    session.clear()
+    
+    return jsonify({'message': 'Account deleted successfully'}), 200
