@@ -4,7 +4,7 @@ import axios from "axios";
 export const auth = reactive({
   isLoggedIn: false,
   user: null,
-  isAuthCheckComplete: false, // <-- NIEUWE VLAG
+  isAuthCheckComplete: false,
 
   async checkAuthStatus() {
     try {
@@ -23,7 +23,7 @@ export const auth = reactive({
       this.isLoggedIn = false;
       this.user = null;
     } finally {
-      this.isAuthCheckComplete = true; // <-- ZET VLAG OP WAAR ALS DE CHECK KLAAR IS
+      this.isAuthCheckComplete = true;
     }
   },
 });

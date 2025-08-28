@@ -5,23 +5,51 @@ from extensions import db
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
+# In routes/auth.py
+
 @auth_bp.route('/register', methods=['POST'])
 def register():
-    """Registers a new user with email and password."""
-    data = request.get_json()
-    if not data or not data.get('email') or not data.get('password'):
-        return jsonify({'error': 'Email and password are required'}), 400
+    print("--- Register function started ---")
+    try:
+        data = request.get_json()
+        print(f"1. Data received: {data}")
 
-    if User.query.filter_by(email=data['email']).first():
-        return jsonify({'error': 'Email address already in use'}), 409
+        if not data or not data.get('email') or not data.get('password'):
+            return jsonify({'error': 'Email and password are required'}), 400
 
-    user = User(email=data['email'])
-    user.set_password(data['password'])
-    db.session.add(user)
-    db.session.commit()
+        if User.query.filter_by(email=data['email']).first():
+            return jsonify({'error': 'Email address already in use'}), 409
 
-    session['user_id'] = user.id
-    return jsonify(user.to_dict()), 201
+        user = User(email=data['email'])
+        print("2. User object created in memory.")
+        
+        user.set_password(data['password'])
+        print("3. Password has been set.")
+
+        # This logic links a Strava guest session if it exists
+        if 'strava_guest_data' in session:
+            guest_data = session.pop('strava_guest_data')
+            user.strava_id = guest_data['strava_id']
+            user.access_token = guest_data['access_token']
+            user.refresh_token = guest_data['refresh_token']
+            user.expires_at = guest_data['expires_at']
+            print("4. Linked Strava guest data to new user.")
+
+        db.session.add(user)
+        print("5. User added to session.")
+        
+        print("6. About to commit to database...")
+        db.session.commit()
+        print("7. Commit successful!")
+
+        session['user_id'] = user.id
+        print("8. User ID added to session. Registration complete.")
+        return jsonify(user.to_dict()), 201
+    except Exception as e:
+        print(f"!!! AN ERROR OCCURRED: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': 'An internal server error occurred.'}), 500
 
 @auth_bp.route('/login', methods=['POST'])
 def login():

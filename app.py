@@ -16,9 +16,11 @@ def create_app(config_class=Config):
 
     # Initialiseer extensies
     db.init_app(app)
-    cors.init_app(app, 
-                  supports_credentials=True, 
-                  origins=["http://localhost:8081", "https://miles-to-merch.vercel.app"])
+    allowed_origins = [
+        "http://localhost:8081", 
+        "https://miles-to-merch.vercel.app"
+    ]
+    cors.init_app(app, supports_credentials=True, origins=allowed_origins)
 
     # Registreer blueprints
     app.register_blueprint(auth_bp)

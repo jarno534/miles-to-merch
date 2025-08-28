@@ -61,28 +61,42 @@ def activities():
         return jsonify({'error': f'Failed to fetch Strava activities: {e}'}), 500
 
 @api_bp.route('/activities/<int:activity_id>')
-@login_required
 def activity_details(activity_id):
-    user = User.query.get(session['user_id'])
+    """
+    Fetches details for a single activity, for either a logged-in user or a guest.
+    """
+    strava_tokens = None
+    
+    if 'user_id' in session:
+        user = User.query.get(session['user_id'])
+        if user and user.access_token:
+            user = refresh_strava_token(user)
+            strava_tokens = {'access_token': user.access_token}
+    elif 'strava_guest_data' in session:
+        strava_tokens = session['strava_guest_data']
+
+    if not strava_tokens:
+        return jsonify({'error': 'Not authenticated with Strava.'}), 401
+
     try:
-        user = refresh_strava_token(user)
-        headers = {'Authorization': f'Bearer {user.access_token}'}
+        headers = {'Authorization': f'Bearer {strava_tokens["access_token"]}'}
         
         main_res = requests.get(f'https://www.strava.com/api/v3/activities/{activity_id}', headers=headers)
         main_res.raise_for_status()
         
-        keys = 'latlng,distance,heartrate,altitude,velocity_smooth,time'
+        keys = 'time,distance,latlng,distance,altitude,velocity_smooth,heartrate,cadence,watts,temp,moving,grade_smooth'
         streams_res = requests.get(f'https://www.strava.com/api/v3/activities/{activity_id}/streams', headers=headers, params={'keys': keys, 'key_by_type': 'true'})
         streams_res.raise_for_status()
 
         photos_res = requests.get(f'https://www.strava.com/api/v3/activities/{activity_id}/photos', headers=headers, params={'size': 600})
         
         return jsonify({
-            'details': main_res.json(), 'streams': streams_res.json(),
+            'details': main_res.json(), 
+            'streams': streams_res.json(),
             'photos': photos_res.json() if photos_res.ok else []
         })
     except requests.exceptions.HTTPError as e:
-        return jsonify({'error': f'Fout bij ophalen van activiteitdetails: {e}'}), 500
+        return jsonify({'error': f'Failed to fetch activity details: {e}'}), 500
 
 @api_bp.route('/products')
 def products():
@@ -182,6 +196,33 @@ def update_profile():
 
     db.session.commit()
     return jsonify(user.to_dict())
+
+# Voeg dit endpoint toe aan je routes/api.py bestand
+
+@api_bp.route('/athlete-stats/<int:athlete_id>')
+@login_required # Zorg ervoor dat de gebruiker is ingelogd
+def get_athlete_stats(athlete_id):
+    """
+    Haalt de all-time statistieken voor een specifieke atleet op.
+    """
+    user = User.query.get(session['user_id'])
+    if not user or not user.access_token:
+        return jsonify({'error': 'Not authenticated with Strava.'}), 401
+
+    # Zorg ervoor dat het token geldig is
+    user = refresh_strava_token(user)
+    
+    try:
+        headers = {'Authorization': f'Bearer {user.access_token}'}
+        
+        # Dit is de cruciale API-call naar de stats van de atleet
+        response = requests.get(f'https://www.strava.com/api/v3/athletes/{athlete_id}/stats', headers=headers)
+        response.raise_for_status()
+        
+        return jsonify(response.json())
+        
+    except requests.exceptions.HTTPError as e:
+        return jsonify({'error': f'Failed to fetch Strava athlete stats: {e}'}), 500
 
 @api_bp.route('/orders', methods=['POST'])
 @login_required
