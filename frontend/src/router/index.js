@@ -13,7 +13,6 @@ const routes = [
     component: () => import("../views/ProductDetailView.vue"),
     props: true,
   },
-  // This is the route that was missing
   {
     path: "/start-design/:productId",
     name: "StartDesign",

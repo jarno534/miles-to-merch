@@ -743,7 +743,7 @@
         @click.stop
         class="data-fields-options"
       >
-        <div class="photo-selection-container">
+        <div v-if="isStravaActivity" class="photo-selection-container">
           <p class="category-title">Select from Activity</p>
           <div class="photo-grid">
             <div
@@ -763,7 +763,9 @@
           </div>
         </div>
         <div class="photo-upload-container">
-          <p class="category-title">Or Upload a Photo</p>
+          <p class="category-title">
+            {{ isStravaActivity ? "Or Upload a Photo" : "Upload a Photo" }}
+          </p>
           <input
             type="file"
             id="photoUpload"
@@ -792,7 +794,7 @@
     </div>
 
     <div
-      v-if="achievements && achievements.length > 0"
+      v-if="isStravaActivity && achievements && achievements.length > 0"
       :class="{ active: selection.type === 'badgeList' }"
       class="element-box"
       @click="$emit('select-element', 'badgeList')"
@@ -872,6 +874,7 @@
     </div>
 
     <div
+      v-if="isStravaActivity"
       :class="{ active: selection.type === 'qrCode' }"
       class="element-box"
       @click="$emit('select-element', 'qrCode')"
@@ -1242,6 +1245,10 @@ export default {
   },
 
   computed: {
+    isStravaActivity() {
+      return this.activityData?.details?.source !== "gpx";
+    },
+
     isCustomLinkValid() {
       if (!this.localCustomLink) return false;
       try {

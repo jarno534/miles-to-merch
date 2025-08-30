@@ -42,7 +42,32 @@
           </div>
         </div>
 
+        <h2>Preferences</h2>
+        <div class="form-group">
+          <label>Unit System</label>
+          <div class="radio-group">
+            <label class="radio-label">
+              <input
+                type="radio"
+                value="metric"
+                v-model="selectedUnits"
+                name="units"
+              />
+              Metric (km, °C)
+            </label>
+            <label class="radio-label">
+              <input
+                type="radio"
+                value="imperial"
+                v-model="selectedUnits"
+                name="units"
+              />
+              Imperial (miles, °F)
+            </label>
+          </div>
+        </div>
         <h2>Shipping Address</h2>
+
         <div class="form-group">
           <label for="address">Address</label>
           <input
@@ -132,6 +157,7 @@
 </template>
 
 <script>
+import { settings } from "../settings";
 import axios from "axios";
 import { auth } from "../auth";
 import { notifySuccess, notifyError } from "../notifications";
@@ -143,6 +169,7 @@ export default {
   data() {
     return {
       user: {},
+      settings: settings,
       loading: true,
       isSaving: false,
       successMessage: "",
@@ -151,6 +178,16 @@ export default {
       deleteError: null,
       auth: auth,
     };
+  },
+  computed: {
+    selectedUnits: {
+      get() {
+        return settings.units;
+      },
+      set(value) {
+        settings.setUnits(value);
+      },
+    },
   },
   watch: {
     "auth.isAuthCheckComplete"(isComplete) {
@@ -399,5 +436,23 @@ input {
 .error-message {
   color: #dc3545;
   margin-top: 10px;
+}
+.radio-group {
+  display: flex;
+  gap: 20px;
+  background-color: #f8f9fa;
+  padding: 15px;
+  border-radius: 5px;
+  margin-top: 5px;
+}
+.radio-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: normal;
+}
+.radio-label input[type="radio"] {
+  width: auto;
+  margin-right: 10px;
 }
 </style>

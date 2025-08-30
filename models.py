@@ -55,12 +55,15 @@ class Product(db.Model):
     description = db.Column(db.Text, nullable=True)
     image_url = db.Column(db.String(200), nullable=True)
     price = db.Column(db.Float, nullable=False)
-    printful_variant_id = db.Column(db.Integer, nullable=True)
+    printful_product_id = db.Column(db.Integer, nullable=True)
+
+    editor_template_url_front = db.Column(db.String(512), nullable=True)
+    editor_template_url_back = db.Column(db.String(512), nullable=True)
 
     def to_dict(self):
         return {
             'id': self.id, 'name': self.name, 'description': self.description,
-            'image_url': self.image_url, 'price': self.price
+            'image_url': self.image_url, 'price': self.price, 'printful_product_id': self.printful_product_id
         }
 
 class Design(db.Model):

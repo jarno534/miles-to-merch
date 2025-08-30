@@ -1,0 +1,4 @@
+ * Debug mode: off
+
+--- Volledige Printful-data is succesvol opgeslagen in 'printful_data.json' ---
+

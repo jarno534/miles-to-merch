@@ -13,6 +13,7 @@
       <div
         class="tshirt-mockup"
         ref="tshirtMockup"
+        :style="mockupStyle"
         @click="$emit('deselect-all')"
       >
         <div
@@ -352,6 +353,10 @@ export default {
   name: "EditorCanvas",
   components: { GraphComponent },
   props: {
+    editorProductData: {
+      type: Object,
+      default: null,
+    },
     selection: {
       type: Object,
       required: true,
@@ -404,6 +409,28 @@ export default {
   },
 
   computed: {
+    mockupStyle() {
+      console.log(
+        "%c[EditorCanvas] mockupStyle wordt berekend. Ontvangen props:",
+        "color: #fc4c02; font-weight: bold;",
+        this.editorProductData
+      );
+      if (
+        this.editorProductData &&
+        this.editorProductData.print_areas &&
+        this.editorProductData.print_areas.front
+      ) {
+        return {
+          backgroundImage: `url(${this.editorProductData.print_areas.front.url})`,
+          backgroundColor: "transparent",
+        };
+      }
+      console.log(
+        "%c[EditorCanvas] Voorwaarden voor mockupStyle NIET voldaan. Lege stijl.",
+        "color: red; font-weight: bold;"
+      );
+      return {};
+    },
     is3DMode() {
       const styleKey = this.mapSettings.style;
       return TILE_LAYERS[styleKey] && TILE_LAYERS[styleKey].is3D;
@@ -798,7 +825,8 @@ export default {
         zoomSnap: 0.1,
       });
 
-      this.map2DInstance.fitBounds(this.activityData.streams.latlng.data);
+      const plainCoordinates = toRaw(this.activityData.streams.latlng.data);
+      this.map2DInstance.fitBounds(plainCoordinates);
       this.updateMapTileLayer();
       this.updateMap();
 
@@ -921,7 +949,7 @@ export default {
 
     drawSolidLine() {
       if (!this.activityData?.streams?.latlng?.data) return;
-      const latlngs = this.activityData.streams.latlng.data;
+      const latlngs = toRaw(this.activityData.streams.latlng.data);
       const polyline = L.polyline(latlngs, {
         color: this.mapSettings.lineColor,
         weight: this.mapSettings.lineWeight,
@@ -933,9 +961,8 @@ export default {
     drawGradientLine() {
       if (!this.activityData?.streams) return;
       const streamKey = this.mapSettings.gradientData;
-      const dataKey = streamKey === "distance" ? "distance" : streamKey;
-      const latlngs = this.activityData.streams.latlng.data;
-      const rawData = this.activityData.streams[dataKey]?.data;
+      const latlngs = toRaw(this.activityData.streams.latlng.data);
+      const rawData = toRaw(this.activityData.streams[streamKey]?.data);
       const scheme = gradientColorSchemes[streamKey];
       if (!latlngs || !rawData || !scheme || latlngs.length !== rawData.length)
         return;
@@ -1287,7 +1314,9 @@ export default {
   position: relative;
   width: 600px;
   height: 750px;
-  background-color: #ddd;
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
   border-radius: 12px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
   overflow: hidden;

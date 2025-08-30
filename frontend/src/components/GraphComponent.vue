@@ -4,6 +4,7 @@
 
 <script>
 import { Line } from "vue-chartjs";
+import { settings } from "../settings";
 import {
   Chart as ChartJS,
   Title,
@@ -58,11 +59,13 @@ export default {
       let yTickFormatter = (value) => value.toLocaleString();
       let yAxisReverse = false;
 
+      const isImperial = settings.units === "imperial";
+
       const streamLabels = {
         heartrate: "Heart Rate (bpm)",
-        velocity_smooth: "Speed (km/h)",
-        altitude: "Altitude (m)",
-        pace: "Pace (min/km)",
+        velocity_smooth: `Speed (${isImperial ? "mph" : "km/h"})`,
+        altitude: `Altitude (${isImperial ? "ft" : "m"})`,
+        pace: `Pace (${isImperial ? "min/mi" : "min/km"})`,
         cadence: "Cadence (rpm)",
         watts: "Power (W)",
       };
@@ -70,24 +73,27 @@ export default {
       yAxisLabel = streamLabels[dataSourceKey] || "";
 
       if (this.activityData && this.activityData.streams) {
+        const speedStream =
+          this.activityData.streams.velocity_smooth?.data || [];
         if (dataSourceKey === "pace") {
-          const speedStream =
-            this.activityData.streams.velocity_smooth?.data || [];
-          const maxPaceSeconds = 800;
-
+          const paceConversionFactor = isImperial ? 1.60934 : 1;
           dataStream = speedStream.map((speed) => {
             if (speed < 0.5) return null;
-            const paceInSeconds = 1000 / speed;
-            return Math.min(paceInSeconds, maxPaceSeconds);
+            const paceInSeconds = (1000 / speed) * paceConversionFactor;
+            return Math.min(paceInSeconds, 1200);
           });
-
           yTickFormatter = (value) => this.formatPace(value);
           yAxisReverse = true;
         } else if (dataSourceKey === "velocity_smooth") {
-          const speedStream =
-            this.activityData.streams.velocity_smooth?.data || [];
+          const speedConversionFactor = isImperial ? 2.23694 : 3.6;
           dataStream = speedStream.map((speed) =>
-            parseFloat((speed * 3.6).toFixed(1))
+            parseFloat((speed * speedConversionFactor).toFixed(1))
+          );
+        } else if (dataSourceKey === "altitude") {
+          const altitudeStream = this.activityData.streams.altitude?.data || [];
+          const altConversionFactor = isImperial ? 3.28084 : 1;
+          dataStream = altitudeStream.map((alt) =>
+            Math.round(alt * altConversionFactor)
           );
         } else {
           dataStream = this.activityData.streams[dataSourceKey]?.data || [];
@@ -120,7 +126,12 @@ export default {
 
     chartData() {
       if (!this.activityData?.streams) return { datasets: [] };
-      const distanceStream = this.activityData.streams.distance?.data || [];
+      const isImperial = settings.units === "imperial";
+      const distConversionFacter = isImperial ? 0.000621371 : 0.001;
+      const distanceStream = (
+        this.activityData.streams.distance?.data || []
+      ).map((d) => d * distConversionFacter);
+
       const { dataStream, yAxisLabel } = this.processedData;
 
       const mainDataPoints = dataStream.map((value, index) => ({
@@ -135,10 +146,11 @@ export default {
         this.options.selectedDataSource !== "altitude" &&
         this.activityData.streams.altitude
       ) {
+        const altConversionFactor = isImperial ? 3.28084 : 1;
         const altitudeDataPoints = this.activityData.streams.altitude.data.map(
           (value, index) => ({
             x: distanceStream[index],
-            y: value,
+            y: value * altConversionFactor,
           })
         );
         datasets.push({
@@ -161,7 +173,9 @@ export default {
           : this.hexToRgba(this.options.fillColor),
         borderColor: this.options.lineColor,
         fill:
-          this.options.selectedDataSource === "pace" ? { target: "end" } : true,
+          this.options.selectedDataSource === "pace"
+            ? { target: "start" }
+            : true,
         tension: 0.4,
         pointRadius: 0,
         borderWidth: this.options.lineThickness,
@@ -175,16 +189,11 @@ export default {
 
     chartOptions() {
       const { yTickFormatter, yAxisLabel, yAxisReverse } = this.processedData;
+      const isImperial = settings.units === "imperial";
+      const distConversionFacter = isImperial ? 0.000621371 : 0.001;
       const distanceStream = this.activityData.streams.distance?.data || [0];
-      const maxDistance = distanceStream[distanceStream.length - 1] || 0;
-
-      const rawStep = maxDistance / this.options.xAxisTicks;
-      const niceSteps = [
-        100, 250, 500, 1000, 2000, 2500, 5000, 10000, 25000, 50000,
-      ];
-      const stepSize =
-        niceSteps.find((step) => step >= rawStep) ||
-        niceSteps[niceSteps.length - 1];
+      const maxDistance =
+        (distanceStream[distanceStream.length - 1] || 0) * distConversionFacter;
 
       const yAxisOptions = {
         reverse: yAxisReverse,
@@ -228,19 +237,18 @@ export default {
             grid: { display: this.options.showGrid },
             ticks: {
               display: this.options.showXAxisLabels,
-              stepSize: stepSize,
+              maxTicksLimit: this.options.xAxisTicks,
               font: { size: this.options.tickFontSize },
-              callback: function (value, index, ticks) {
-                if (index === ticks.length - 1) {
-                  return null;
+              callback: function (value) {
+                if (value % 1 === 0) {
+                  return value;
                 }
-                const km = value / 1000;
-                return km.toLocaleString();
+                return null;
               },
             },
             title: {
               display: this.options.showXAxisTitle,
-              text: "Distance (km)",
+              text: `Distance (${isImperial ? "mi" : "km"})`,
             },
           },
           y: yAxisOptions,
@@ -262,7 +270,7 @@ export default {
             },
             title: {
               display: this.options.showY1AxisTitle,
-              text: "Altitude (m)",
+              text: `Altitude (${isImperial ? "ft" : "m"})`, // Dynamisch label
               font: { size: this.options.titleFontSize },
             },
           },

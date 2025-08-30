@@ -28,6 +28,7 @@
       ref="editorCanvas"
       :loading="loading"
       :activity-data="activityData"
+      :editor-product-data="editorProductData"
       :selection="selection"
       :map-element="mapElement"
       :map-settings="mapSettings"
@@ -68,6 +69,10 @@
       @bring-to-front="bringToFront"
       @send-to-back="sendToBack"
     />
+    <UnitsModal
+      :visible="isUnitsModalVisible"
+      @units-selected="handleUnitsSelected"
+    />
   </div>
 </template>
 
@@ -78,8 +83,10 @@ import EditorCanvas from "@/components/EditorCanvas.vue";
 import EditorTools from "@/components/EditorTools.vue";
 import QRCode from "qrcode";
 import { auth } from "../auth";
+import { settings } from "../settings";
 import html2canvas from "html2canvas";
 import { notifySuccess, notifyError, notifyInfo } from "../notifications";
+import UnitsModal from "@/components/UnitsModal.vue";
 
 export default {
   name: "DesignView",
@@ -102,10 +109,16 @@ export default {
     EditorSidebar,
     EditorCanvas,
     EditorTools,
+    UnitsModal,
   },
   data() {
     return {
+      editorProductData: null,
+      isDirty: false,
+      settings: settings,
+      isUnitsModalVisible: false,
       athleteStats: null,
+      rawWeatherTemp: null,
       weatherData: null,
       weatherElement: {
         id: "weather",
@@ -378,6 +391,7 @@ export default {
     designState: {
       handler() {
         if (this.isApplyingState) return;
+        this.isDirty = true;
         if (this.historyIndex < this.history.length - 1) {
           this.history.splice(this.historyIndex + 1);
         }
@@ -448,6 +462,22 @@ export default {
   },
 
   methods: {
+    handleBeforeUnload(event) {
+      if (this.isDirty) {
+        event.preventDefault();
+        event.returnValue = "";
+      }
+    },
+
+    handleUnitsSelected(chosenUnits) {
+      settings.setUnits(chosenUnits);
+      this.isUnitsModalVisible = false;
+      if (this.activityData) {
+        this.updateDataFields();
+        this.updateWeatherDisplay();
+      }
+    },
+
     handleSelectionPropertyUpdate({ property, value }) {
       if (this.selection && this.selection.item) {
         this.selection.item[property] = value;
@@ -545,6 +575,7 @@ export default {
         });
         notifySuccess("Design saved successfully!");
         localStorage.removeItem("unsavedDesign");
+        this.isDirty = false;
       } catch (error) {
         console.error("Error saving design:", error);
         notifyError("Failed to save design. Please try again.");
@@ -569,18 +600,32 @@ export default {
             closestHourIndex = index;
           }
         });
+        this.rawWeatherTemp =
+          response.data.hourly.temperature_2m[closestHourIndex];
         const weatherCode = hourlyData.weathercode[closestHourIndex];
         const interpretation = this.getWeatherInterpretation(weatherCode);
         this.weatherData = {
-          temp: Math.round(hourlyData.temperature_2m[closestHourIndex]),
+          temp: 0,
           description: interpretation.description,
           icon: interpretation.icon,
         };
+        this.updateWeatherDisplay();
       } catch (error) {
         console.error("Fout bij het ophalen van weerdata:", error);
         this.weatherData = null;
       }
     },
+
+    updateWeatherDisplay() {
+      if (this.rawWeatherTemp === null) return;
+      if (settings.units === "imperial") {
+        const fahrenheit = this.rawWeatherTemp * (9 / 5) + 32;
+        this.weatherData.temp = Math.round(fahrenheit);
+      } else {
+        this.weatherData.temp = Math.round(this.rawWeatherTemp);
+      }
+    },
+
     getWeatherInterpretation(code) {
       const codes = {
         0: { description: "Clear sky", icon: "☀️" },
@@ -1204,7 +1249,12 @@ export default {
     },
 
     formatDistance(m) {
-      return m === undefined ? "-" : `${(m / 1000).toFixed(2)} km`;
+      if (m === undefined) return "-";
+      if (settings.units === "imperial") {
+        const miles = m * 0.000621371;
+        return `${miles.toFixed(2)} mi`;
+      }
+      return `${(m / 1000).toFixed(2)} km`;
     },
 
     formatTime(s) {
@@ -1215,17 +1265,37 @@ export default {
 
     formatPace(sPerKm) {
       if (sPerKm === undefined || !isFinite(sPerKm)) return "-";
-      return `${Math.floor(sPerKm / 60)}:${Math.round(sPerKm % 60)
+      if (settings.units === "imperial") {
+        const sPerMile = sPerKm * 1.60934;
+        const minutes = Math.floor(sPerMile / 60);
+        const seconds = Math.round(sPerMile % 60)
+          .toString()
+          .padStart(2, "0");
+        return `${minutes}:${seconds} /mi`;
+      }
+      const minutes = Math.floor(sPerKm / 60);
+      const seconds = Math.round(sPerKm % 60)
         .toString()
-        .padStart(2, "0")} /km`;
+        .padStart(2, "0");
+      return `${minutes}:${seconds} /km`;
     },
 
     formatSpeed(mps) {
-      return mps === undefined ? "-" : `${(mps * 3.6).toFixed(1)} km/h`;
+      if (mps === undefined) return "-";
+      if (settings.units === "imperial") {
+        const mph = mps * 2.23694;
+        return `${mph.toFixed(1)} mph`;
+      }
+      return `${(mps * 3.6).toFixed(1)} km/h`;
     },
 
     formatElevation(m) {
-      return m === undefined ? "-" : `${Math.round(m)} m`;
+      if (m === undefined) return "-";
+      if (settings.units === "imperial") {
+        const feet = m * 3.28084;
+        return `${Math.round(feet)} ft`;
+      }
+      return `${Math.round(m)} m`;
     },
 
     formatHeartRate(bpm) {
@@ -1272,7 +1342,24 @@ export default {
   },
 
   async mounted() {
+    if (!localStorage.getItem("user-units")) {
+      this.isUnitsModalVisible = true;
+    }
+
+    window.addEventListener("beforeunload", this.handleBeforeUnload);
     window.addEventListener("keydown", this.handleKeyDown);
+
+    const savedDetails = localStorage.getItem("editorProductData");
+    if (savedDetails) {
+      this.editorProductData = JSON.parse(savedDetails);
+    }
+
+    console.log(
+      "%c[DesignView] Data geladen uit localStorage:",
+      "color: blue; font-weight: bold;",
+      this.editorProductData
+    );
+
     const gpxKey = this.$route.query.gpx_key;
     const designIdToLoad = this.designId || this.$route.query.design_id;
     if (gpxKey) {
@@ -1309,6 +1396,7 @@ export default {
         console.error("Error fetching activity data:", error);
       }
     }
+
     const unsavedDesign = localStorage.getItem("unsavedDesign");
     if (auth.isLoggedIn && unsavedDesign) {
       this.loadState(JSON.parse(unsavedDesign));
@@ -1327,6 +1415,7 @@ export default {
     } else if (unsavedDesign) {
       this.loadState(JSON.parse(unsavedDesign));
     }
+
     this.mapElement.visible = true;
     this.history.push(this.designState);
     this.historyIndex = 0;
@@ -1335,6 +1424,22 @@ export default {
 
   beforeUnmount() {
     window.removeEventListener("keydown", this.handleKeyDown);
+    window.removeEventListener("beforeunload", this.handleBeforeUnload);
+  },
+
+  beforeRouteLeave(to, from, next) {
+    if (this.isDirty) {
+      const answer = window.confirm(
+        "You have unsaved changes. Are you sure you want to leave this page?"
+      );
+      if (answer) {
+        next();
+      } else {
+        next(false);
+      }
+    } else {
+      next();
+    }
   },
 };
 </script>

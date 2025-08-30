@@ -1,6 +1,6 @@
 <template>
   <div class="product-detail-page">
-    <SpinnerComponent v-if="loading" />
+    <SpinnerComponent v-if="loading" text="Loading product details..." />
     <div v-if="product" class="product-container">
       <div class="product-image-container">
         <img
@@ -14,22 +14,55 @@
         <p class="product-price">€{{ product.price.toFixed(2) }}</p>
         <p class="product-description">{{ product.description }}</p>
 
-        <div class="product-specs">
-          <h2>Product Details</h2>
-          <ul>
-            <li><strong>Material:</strong> 100% organic ring-spun cotton</li>
-            <li><strong>Weight:</strong> 180 g/m²</li>
-            <li><strong>Fit:</strong> Medium fit, unisex</li>
-            <li>
-              <strong>Available Colors:</strong> White, Black, Navy, Heather
-              Grey
-            </li>
-          </ul>
+        <!-- Kleurkeuze (Aangepast) -->
+        <div v-if="availableColors.length > 0" class="options-section">
+          <h2>
+            Color: <span class="selected-option">{{ selectedColor }}</span>
+          </h2>
+          <div class="color-swatches">
+            <button
+              v-for="color in availableColors"
+              :key="color.name"
+              class="color-swatch"
+              :style="{ backgroundColor: color.code }"
+              :class="{ active: selectedColor === color.name }"
+              @click="selectColor(color.name)"
+              :title="color.name"
+            ></button>
+          </div>
         </div>
 
-        <button @click="startDesigning" class="design-button">
+        <!-- Maatkeuze (Aangepast) -->
+        <div v-if="availableSizes.length > 0" class="options-section">
+          <h2>
+            Size: <span class="selected-option">{{ selectedSize }}</span>
+          </h2>
+          <div class="size-buttons">
+            <button
+              v-for="size in availableSizes"
+              :key="size"
+              class="size-button"
+              :class="{ active: selectedSize === size }"
+              @click="selectSize(size)"
+            >
+              {{ size }}
+            </button>
+          </div>
+        </div>
+
+        <button
+          @click="startDesigning"
+          class="design-button"
+          :disabled="!isReadyToDesign"
+        >
           Start Designing
         </button>
+        <p
+          v-if="variants.length > 0 && !isReadyToDesign"
+          class="selection-prompt"
+        >
+          Please select a color and size.
+        </p>
       </div>
     </div>
   </div>
@@ -52,23 +85,128 @@ export default {
     return {
       product: null,
       loading: true,
+      variants: [],
+      printfulProductDetails: null,
+      selectedColor: null,
+      selectedSize: null,
+      selectedMockupUrl: null,
     };
+  },
+  computed: {
+    availableColors() {
+      if (!this.variants) return [];
+
+      const curatedColorNames = [
+        "White",
+        "Black",
+        "Navy",
+        "Athletic Heather",
+        "Red",
+        "Royal Blue",
+        "Kelly",
+        "Asphalt",
+      ];
+
+      const uniqueColors = new Map();
+      this.variants.forEach((v) => {
+        if (
+          v.color &&
+          v.color_code &&
+          curatedColorNames.includes(v.color) &&
+          !uniqueColors.has(v.color)
+        ) {
+          uniqueColors.set(v.color, v.color_code);
+        }
+      });
+
+      const sortedColorArray = Array.from(uniqueColors, ([name, code]) => ({
+        name,
+        code,
+      })).sort(
+        (a, b) =>
+          curatedColorNames.indexOf(a.name) - curatedColorNames.indexOf(b.name)
+      );
+
+      return sortedColorArray;
+    },
+    availableSizes() {
+      if (!this.selectedColor || !this.variants) return [];
+      return this.variants
+        .filter((v) => v.color === this.selectedColor)
+        .map((v) => v.size);
+    },
+    selectedVariant() {
+      if (!this.selectedColor || !this.selectedSize || !this.variants)
+        return null;
+      return (
+        this.variants.find(
+          (v) => v.color === this.selectedColor && v.size === this.selectedSize
+        ) || null
+      );
+    },
+    isReadyToDesign() {
+      if (!this.product) return false;
+      if (!this.product.printful_product_id || this.variants.length === 0) {
+        return true;
+      }
+      return !!this.selectedVariant;
+    },
   },
   async created() {
     try {
-      const response = await axios.get(
+      const productRes = await axios.get(
         `http://localhost:5000/api/products/${this.productId}`
       );
-      this.product = response.data;
+      this.product = productRes.data;
+
+      if (this.product.printful_product_id) {
+        const detailsRes = await axios.get(
+          `http://localhost:5000/api/products/${this.productId}/printful-details`
+        );
+        this.printfulProductDetails = detailsRes.data;
+        this.variants = detailsRes.data.variants;
+      }
     } catch (error) {
-      console.error("Error fetching product details:", error);
-      this.$router.push({ name: "home" });
+      console.error("Error fetching product data:", error);
+      this.$router.push("/");
     } finally {
       this.loading = false;
     }
   },
   methods: {
+    selectColor(colorName) {
+      this.selectedColor = colorName;
+      if (!this.availableSizes.includes(this.selectedSize)) {
+        this.selectedSize = null;
+      }
+
+      const firstVariantOfColor = this.variants.find(
+        (v) => v.color === colorName
+      );
+
+      if (firstVariantOfColor && firstVariantOfColor.image) {
+        this.selectedMockupUrl = firstVariantOfColor.image;
+      }
+    },
+
+    selectSize(size) {
+      this.selectedSize = size;
+    },
+
     startDesigning() {
+      if (!this.isReadyToDesign) return;
+
+      localStorage.setItem("selectedVariantId", this.selectedVariant.id);
+      localStorage.setItem("selectedProductId", this.productId);
+
+      if (this.printfulProductDetails) {
+        // De 'editorProductData' bevat nu de print_areas met de juiste template URLs
+        localStorage.setItem(
+          "editorProductData",
+          JSON.stringify(this.printfulProductDetails)
+        );
+      }
+
       this.$router.push({
         name: "StartDesign",
         params: { productId: this.productId },
@@ -126,24 +264,53 @@ export default {
   color: #555;
   margin-bottom: 30px;
 }
-.product-specs {
-  margin-bottom: 30px;
+.options-section {
+  margin-bottom: 25px;
+  text-align: left;
 }
-.product-specs h2 {
-  border-bottom: 2px solid #eee;
-  padding-bottom: 10px;
-  margin-bottom: 15px;
+.options-section h2 {
+  font-size: 1.2rem;
+  margin: 0 0 10px;
+  color: #333;
 }
-.product-specs ul {
-  list-style: none;
-  padding: 0;
+.selected-option {
+  font-weight: normal;
+  color: #666;
 }
-.product-specs li {
-  margin-bottom: 8px;
-  color: #444;
+.color-swatches,
+.size-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.color-swatch {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid #ccc;
+  cursor: pointer;
+  transition: transform 0.2s, border-color 0.2s;
+}
+.color-swatch.active {
+  border-color: #fc4c02;
+  transform: scale(1.15);
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+}
+.size-button {
+  padding: 8px 15px;
+  border: 2px solid #ccc;
+  background: #fff;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: bold;
+}
+.size-button.active {
+  background-color: #fc4c02;
+  color: white;
+  border-color: #fc4c02;
 }
 .design-button {
-  background-color: #fc4c02;
+  background-color: #28a745;
   color: white;
   border: none;
   padding: 15px 25px;
@@ -154,7 +321,16 @@ export default {
   transition: background-color 0.2s;
   margin-top: auto;
 }
-.design-button:hover {
-  background-color: #e24300;
+.design-button:hover:not(:disabled) {
+  background-color: #218838;
+}
+.design-button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+.selection-prompt {
+  text-align: center;
+  color: #888;
+  margin-top: 10px;
 }
 </style>

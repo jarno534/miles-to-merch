@@ -1,15 +1,24 @@
 import requests
+import json
 from datetime import datetime
 from functools import wraps
 from flask import Blueprint, jsonify, request, session, current_app
-from models import User, Product, Design
+from models import User, Product, Design, Order
 from extensions import db
 
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            return jsonify({'error': 'Authentication required.'}), 401
+        return f(*args, **kwargs)
+    return decorated_function
+
 def refresh_strava_token(user):
-    if datetime.now().timestamp() > user.expires_at:
-        print(f"Token voor gebruiker {user.strava_id} is verlopen. Bezig met vernieuwen.")
+    if user.expires_at and datetime.now().timestamp() > user.expires_at:
+        print(f"Token for user {user.strava_id} has expired. Refreshing.")
         payload = {
             'client_id': current_app.config['STRAVA_CLIENT_ID'],
             'client_secret': current_app.config['STRAVA_CLIENT_SECRET'],
@@ -25,17 +34,10 @@ def refresh_strava_token(user):
         user.expires_at = new_tokens['expires_at']
         
         db.session.commit()
-        print("Token succesvol vernieuwd.")
+        print("Token successfully refreshed.")
     return user
 
-def login_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
-            return jsonify({'error': 'Authenticatie vereist.'}), 401
-        return f(*args, **kwargs)
-    return decorated_function
-
+# --- Activity Routes ---
 @api_bp.route('/activities')
 def activities():
     strava_tokens = None
@@ -98,6 +100,7 @@ def activity_details(activity_id):
     except requests.exceptions.HTTPError as e:
         return jsonify({'error': f'Failed to fetch activity details: {e}'}), 500
 
+# --- Product Routes ---
 @api_bp.route('/products')
 def products():
     return jsonify([p.to_dict() for p in Product.query.all()])
@@ -107,6 +110,77 @@ def get_single_product(product_id):
     product = Product.query.get_or_404(product_id)
     return jsonify(product.to_dict())
 
+# In api.py
+
+@api_bp.route('/products/<int:product_id>/printful-details')
+def get_printful_product_details(product_id):
+    """
+    Fetches detailed product information from Printful, including
+    variants, mockup images, and print area specifications.
+    """
+    product = Product.query.get_or_404(product_id)
+    if not product.printful_product_id:
+        return jsonify({'error': 'Product is not configured for Printful'}), 404
+
+    printful_api_key = current_app.config.get('PRINTFUL_API_KEY')
+    if not printful_api_key:
+        return jsonify({'error': 'Printful API key is not configured'}), 500
+    
+    headers = {'Authorization': f'Bearer {printful_api_key}'}
+    
+    try:
+        url = f'https://api.printful.com/products/{product.printful_product_id}'
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        
+        data = response.json()
+        result = data.get('result', {})
+        
+        variants_info = result.get('variants', [])
+        product_info = result.get('product', {})
+
+        # --- NIEUWE, GERICHTE LOGICA ---
+        front_template_url = None
+        front_template_width = None
+        front_template_height = None
+        
+        if product_info and product_info.get('files'):
+            # We zoeken specifiek naar het 'file' object met type 'front'
+            for file_info in product_info.get('files'):
+                if file_info.get('type') == 'front':
+                    # Dit is de juiste template voor de editor!
+                    front_template_url = file_info.get('preview_url')
+                    front_template_width = file_info.get('width')
+                    front_template_height = file_info.get('height')
+                    break # Stop met zoeken zodra we het hebben gevonden
+
+        # Veilige fallback: als we om een of andere reden de template niet vinden,
+        # gebruiken we de foto met het model om een crash te voorkomen.
+        if not front_template_url and variants_info:
+            front_template_url = variants_info[0].get('image')
+
+        filtered_data = {
+            'variants': variants_info,
+            'print_areas': {
+                'front': {
+                    'url': front_template_url,
+                    'width': front_template_width,
+                    'height': front_template_height
+                }
+                # Je kunt hier een vergelijkbare logica voor 'back' toevoegen
+            }
+        }
+        
+        return jsonify(filtered_data)
+
+    except requests.exceptions.RequestException as e:
+        error_message = f"Failed to fetch product details from Printful: {e}"
+        if e.response:
+            error_message += f" | Response: {e.response.text}"
+        print(error_message)
+        return jsonify({'error': 'Failed to fetch product details from Printful.'}), 502
+
+# --- Design Routes ---
 @api_bp.route('/designs', methods=['POST'])
 @login_required
 def create_design():
@@ -173,6 +247,7 @@ def update_design(design_id):
     
     return jsonify(design.to_dict())
 
+# --- Profile Routes ---
 @api_bp.route('/profile', methods=['GET'])
 @login_required
 def get_profile():
@@ -197,7 +272,23 @@ def update_profile():
     db.session.commit()
     return jsonify(user.to_dict())
 
-# Voeg dit endpoint toe aan je routes/api.py bestand
+@api_bp.route('/profile/delete', methods=['POST'])
+@login_required
+def delete_profile_with_password():
+    """Deletes the current user after verifying their password."""
+    user = User.query.get(session['user_id'])
+    data = request.get_json()
+    password = data.get('password')
+
+    if not password or not user.check_password(password):
+        return jsonify({'error': 'Incorrect password'}), 401
+
+    db.session.delete(user)
+    db.session.commit()
+    
+    session.clear()
+    
+    return jsonify({'message': 'Account deleted successfully'}), 200
 
 @api_bp.route('/athlete-stats/<int:athlete_id>')
 @login_required # Zorg ervoor dat de gebruiker is ingelogd
@@ -224,6 +315,7 @@ def get_athlete_stats(athlete_id):
     except requests.exceptions.HTTPError as e:
         return jsonify({'error': f'Failed to fetch Strava athlete stats: {e}'}), 500
 
+# --- Order Routes ---
 @api_bp.route('/orders', methods=['POST'])
 @login_required
 def create_order():
@@ -325,23 +417,3 @@ def get_orders():
         orders_data.append(order_dict)
         
     return jsonify(orders_data)
-
-# In routes/api.py
-
-@api_bp.route('/profile/delete', methods=['POST'])
-@login_required
-def delete_profile_with_password():
-    """Deletes the current user after verifying their password."""
-    user = User.query.get(session['user_id'])
-    data = request.get_json()
-    password = data.get('password')
-
-    if not password or not user.check_password(password):
-        return jsonify({'error': 'Incorrect password'}), 401
-
-    db.session.delete(user)
-    db.session.commit()
-    
-    session.clear()
-    
-    return jsonify({'message': 'Account deleted successfully'}), 200

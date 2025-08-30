@@ -2,10 +2,10 @@ import requests
 from flask import Blueprint, redirect, request, session, jsonify, current_app
 from models import User
 from extensions import db
+from flask_login import login_user
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
-# In routes/auth.py
 
 @auth_bp.route('/register', methods=['POST'])
 def register():
@@ -26,13 +26,12 @@ def register():
         user.set_password(data['password'])
         print("3. Password has been set.")
 
-        # This logic links a Strava guest session if it exists
         if 'strava_guest_data' in session:
             guest_data = session.pop('strava_guest_data')
             user.strava_id = guest_data['strava_id']
-            user.access_token = guest_data['access_token']
-            user.refresh_token = guest_data['refresh_token']
-            user.expires_at = guest_data['expires_at']
+            user.strava_access_token = guest_data['access_token']
+            user.strava_refresh_token = guest_data['refresh_token']
+            user.strava_token_expires_at = guest_data['expires_at']
             print("4. Linked Strava guest data to new user.")
 
         db.session.add(user)
@@ -81,12 +80,10 @@ def status():
             return jsonify({'logged_in': True, 'user': user.to_dict()})
     return jsonify({'logged_in': False}), 401
 
-# --- Strava Specific Routes ---
 
 @auth_bp.route('/login/strava')
 def strava_login():
     """Redirects the user to the Strava authentication page."""
-    # Store the 'next' parameter in the session if it exists
     next_url = request.args.get('next')
     if next_url:
         session['strava_redirect_next'] = next_url
@@ -102,8 +99,67 @@ def strava_login():
 
 @auth_bp.route('/callback')
 def strava_callback():
+    """
+    Deze functie wordt aangeroepen nadat de gebruiker toestemming heeft gegeven op Strava.
+    Het zoekt een gebruiker op basis van Strava ID, of maakt een nieuwe aan.
+    """
+    # 1. Haal de autorisatiecode op
+    auth_code = request.args.get('code')
+    if not auth_code:
+        return jsonify({"error": "Authorization code not found."}), 400
+
+    # 2. Wissel de code in voor een access token
+    token_url = 'https://www.strava.com/oauth/token'
+    payload = {
+        'client_id': current_app.config['STRAVA_CLIENT_ID'],
+        'client_secret': current_app.config['STRAVA_CLIENT_SECRET'],
+        'code': auth_code,
+        'grant_type': 'authorization_code'
+    }
+    
+    try:
+        token_response = requests.post(token_url, data=payload)
+        token_response.raise_for_status()
+        token_data = token_response.json()
+    except requests.exceptions.RequestException as e:
+        return jsonify({"error": "Failed to get token from Strava", "details": str(e)}), 500
+
+    # 3. Zoek de gebruiker op of maak een nieuwe aan
+    athlete_info = token_data.get('athlete', {})
+    strava_id = str(athlete_info.get('id'))
+
+    # Zoek of deze Strava gebruiker al in onze database staat
+    user = User.query.filter_by(strava_id=strava_id).first()
+
+    if not user:
+        # Nieuwe gebruiker: maak een account aan
+        # Haal de voor- en achternaam op van Strava
+        firstname = athlete_info.get('firstname', '')
+        lastname = athlete_info.get('lastname', '')
+        full_name = f"{firstname} {lastname}".strip()
+
+        user = User(
+            strava_id=strava_id,
+            name=full_name, # Gebruik het 'name' veld uit je model
+            email=None # Strava geeft geen e-mailadres
+        )
+        db.session.add(user)
+
+    # 4. Update de tokens van de gebruiker (voor zowel nieuwe als bestaande gebruikers)
+    user.access_token = token_data.get('access_token')
+    user.refresh_token = token_data.get('refresh_token')
+    user.expires_at = token_data.get('expires_at')
+    
+    db.session.commit()
+
+    # 5. Log de gebruiker in in de Flask-sessie
+    session['user_id'] = user.id # Gebruik de sessie direct zoals in je andere functies
+
+    # 6. Stuur de gebruiker terug naar het frontend dashboard
+    frontend_url = current_app.config.get('FRONTEND_URL', 'http://localhost:8081')
+    return redirect(f"{frontend_url}/activities")
+
     """Handles the callback from Strava."""
-    # ... (de code voor het uitwisselen van de token en het updaten van de gebruiker blijft exact hetzelfde) ...
     code = request.args.get('code')
     if not code:
         return 'Authentication failed: no code received', 400
