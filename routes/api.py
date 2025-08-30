@@ -368,8 +368,14 @@ def create_order():
     if not printful_api_key:
         return jsonify({'error': 'Printful API key is not configured on the server.'}), 500
 
+    # --- TIJDELIJKE DEBUG STAP: Hardcode de Store ID ---
+    printful_store_id = '16718510'
+    print(f"DEBUG: Gebruik van hardcoded Printful Store ID: {printful_store_id}")
+    # --- EINDE TIJDELIJKE STAP ---
+
     headers = {
-        'Authorization': f'Bearer {printful_api_key}'
+        'Authorization': f'Bearer {printful_api_key}',
+        'X-PF-Store-Id': printful_store_id
     }
 
     design_image_url = design.preview_url
@@ -465,3 +471,25 @@ def get_single_order(order_id):
             order_data['product_image_url'] = None
 
     return jsonify(order_data)
+
+# --- START VAN TIJDELIJKE DEBUG ROUTE ---
+
+@api_bp.route('/debug-config')
+def debug_config():
+    print("\n--- STARTING FLASK CONFIGURATION DEBUG ---")
+
+    # We sorteren de sleutels voor een overzichtelijke output
+    config_keys = sorted(current_app.config.keys())
+
+    for key in config_keys:
+        # We printen elke sleutel en zijn waarde
+        print(f"  {key} = {current_app.config[key]}")
+
+    print("--- EINDE VAN CONFIGURATIE ---")
+
+    return jsonify({
+        "message": "Configuration has been printed to your Flask server terminal.",
+        "keys_found": len(config_keys)
+    })
+
+# --- EINDE VAN TIJDELIJKE DEBUG ROUTE ---
