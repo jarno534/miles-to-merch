@@ -13,7 +13,7 @@
         @click="selectProduct(product.id)"
       >
         <img
-          :src="product.image_url"
+          :src="getProductImageUrl(product)"
           :alt="product.name"
           class="product-image"
         />
@@ -41,16 +41,26 @@ export default {
     return {
       products: [],
       loading: true,
-      // This will hold the activity ID if the user came from the activities page
       preselectedActivityId: null,
     };
   },
+
   created() {
-    // Check if an activity was pre-selected
     this.preselectedActivityId = localStorage.getItem("selectedActivityId");
     this.fetchProducts();
   },
+
   methods: {
+    getProductImageUrl(product) {
+      if (product.print_areas) {
+        const firstAreaKey = Object.keys(product.print_areas)[0];
+        if (firstAreaKey) {
+          return product.print_areas[firstAreaKey].image_url;
+        }
+      }
+      return "";
+    },
+
     async fetchProducts() {
       try {
         const response = await axios.get("http://localhost:5000/api/products");
@@ -61,9 +71,9 @@ export default {
         this.loading = false;
       }
     },
+
     selectProduct(productId) {
       if (this.preselectedActivityId) {
-        // If an activity was waiting, go straight to the design page
         this.$router.push({
           name: "Design",
           params: {
@@ -71,10 +81,8 @@ export default {
             activityId: this.preselectedActivityId,
           },
         });
-        // Clean up the stored activity ID
         localStorage.removeItem("selectedActivityId");
       } else {
-        // Otherwise, go to the product detail page as normal
         this.$router.push({
           name: "ProductDetail",
           params: { productId: productId },

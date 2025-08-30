@@ -2,18 +2,53 @@
   <div class="editor-tools-sidebar">
     <h2>Tools</h2>
     <div class="tools-section">
-      <button @click="$emit('save-design')" class="tool-button save-button">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="currentColor"
+      <!-- NIEUW: Wrapper voor de split button -->
+      <div class="split-button-container">
+        <!-- Hoofdknop: Opslaan & Bestellen -->
+        <button
+          @click="$emit('save-and-checkout')"
+          class="tool-button save-button main-action"
         >
-          <path
-            d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"
-          />
-        </svg>
-        Save Design
-      </button>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+          >
+            <path
+              d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
+            />
+          </svg>
+          Proceed to Checkout
+        </button>
+        <!-- Pijltje om de extra opties te tonen -->
+        <button
+          @click.stop="toggleSaveOptions"
+          class="tool-button save-button dropdown-trigger"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+          >
+            <path d="M7 10l5 5 5-5z" />
+          </svg>
+        </button>
+        <!-- De uitklapbare optie -->
+        <div v-if="isSaveOptionsOpen" class="dropdown-menu">
+          <button @click="saveForLater" class="dropdown-item">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
+              <path
+                d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"
+              />
+            </svg>
+            Save for Later
+          </button>
+        </div>
+      </div>
     </div>
     <div class="tools-section">
       <button
@@ -335,6 +370,7 @@ export default {
   },
   emits: [
     "save-design",
+    "save-and-checkout",
     "clear-canvas",
     "undo",
     "redo",
@@ -349,10 +385,82 @@ export default {
     "bring-to-front",
     "send-to-back",
   ],
+  data() {
+    return {
+      isSaveOptionsOpen: false,
+    };
+  },
+  methods: {
+    toggleSaveOptions() {
+      this.isSaveOptionsOpen = !this.isSaveOptionsOpen;
+    },
+    saveForLater() {
+      this.$emit("save-design");
+      this.isSaveOptionsOpen = false;
+    },
+  },
 };
 </script>
 
 <style scoped>
+.split-button-container {
+  position: relative;
+  display: flex;
+  width: 100%;
+}
+
+.tool-button.save-button.main-action {
+  flex-grow: 1;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-right: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.tool-button.save-button.dropdown-trigger {
+  flex-shrink: 0;
+  width: 40px;
+  padding: 8px;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: white;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  margin-top: 5px;
+  z-index: 100;
+  overflow: hidden;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 15px;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  font-size: 0.9em;
+  font-weight: 500;
+}
+
+.dropdown-item:hover {
+  background-color: #f5f5f5;
+}
+
+.dropdown-item svg {
+  width: 18px;
+  height: 18px;
+}
+
 .editor-tools-sidebar {
   width: 200px;
   background-color: #ffffff;

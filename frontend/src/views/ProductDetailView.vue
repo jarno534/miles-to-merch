@@ -3,18 +3,13 @@
     <SpinnerComponent v-if="loading" text="Loading product details..." />
     <div v-if="product" class="product-container">
       <div class="product-image-container">
-        <img
-          :src="product.image_url"
-          :alt="product.name"
-          class="product-image"
-        />
+        <img :src="displayImageUrl" :alt="product.name" class="product-image" />
       </div>
       <div class="product-info-container">
         <h1 class="product-name">{{ product.name }}</h1>
         <p class="product-price">€{{ product.price.toFixed(2) }}</p>
         <p class="product-description">{{ product.description }}</p>
 
-        <!-- Kleurkeuze (Aangepast) -->
         <div v-if="availableColors.length > 0" class="options-section">
           <h2>
             Color: <span class="selected-option">{{ selectedColor }}</span>
@@ -32,7 +27,6 @@
           </div>
         </div>
 
-        <!-- Maatkeuze (Aangepast) -->
         <div v-if="availableSizes.length > 0" class="options-section">
           <h2>
             Size: <span class="selected-option">{{ selectedSize }}</span>
@@ -90,9 +84,23 @@ export default {
       selectedColor: null,
       selectedSize: null,
       selectedMockupUrl: null,
+      selectedVariantId: null,
     };
   },
   computed: {
+    displayImageUrl() {
+      if (this.selectedMockupUrl) {
+        return this.selectedMockupUrl;
+      }
+      if (this.product && this.product.print_areas) {
+        const firstAreaKey = Object.keys(this.product.print_areas)[0];
+        if (firstAreaKey) {
+          return this.product.print_areas[firstAreaKey].image_url;
+        }
+      }
+      return "";
+    },
+
     availableColors() {
       if (!this.variants) return [];
 
@@ -129,12 +137,14 @@ export default {
 
       return sortedColorArray;
     },
+
     availableSizes() {
       if (!this.selectedColor || !this.variants) return [];
       return this.variants
         .filter((v) => v.color === this.selectedColor)
         .map((v) => v.size);
     },
+
     selectedVariant() {
       if (!this.selectedColor || !this.selectedSize || !this.variants)
         return null;
@@ -144,14 +154,18 @@ export default {
         ) || null
       );
     },
+
     isReadyToDesign() {
-      if (!this.product) return false;
+      if (!this.product) {
+        return false;
+      }
       if (!this.product.printful_product_id || this.variants.length === 0) {
         return true;
       }
       return !!this.selectedVariant;
     },
   },
+
   async created() {
     try {
       const productRes = await axios.get(
@@ -173,6 +187,7 @@ export default {
       this.loading = false;
     }
   },
+
   methods: {
     selectColor(colorName) {
       this.selectedColor = colorName;
@@ -191,16 +206,21 @@ export default {
 
     selectSize(size) {
       this.selectedSize = size;
+      const variant = this.variants.find(
+        (v) => v.color === this.selectedColor && v.size === size
+      );
+      if (variant) {
+        this.selectedVariantId = variant.id;
+      }
     },
 
     startDesigning() {
       if (!this.isReadyToDesign) return;
 
-      localStorage.setItem("selectedVariantId", this.selectedVariant.id);
+      localStorage.setItem("selectedVariantId", this.selectedVariantId);
       localStorage.setItem("selectedProductId", this.productId);
 
       if (this.printfulProductDetails) {
-        // De 'editorProductData' bevat nu de print_areas met de juiste template URLs
         localStorage.setItem(
           "editorProductData",
           JSON.stringify(this.printfulProductDetails)

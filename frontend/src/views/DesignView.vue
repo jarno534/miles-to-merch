@@ -24,29 +24,46 @@
       @update:selection-item-property="handleSelectionPropertyUpdate"
     />
 
-    <EditorCanvas
-      ref="editorCanvas"
-      :loading="loading"
-      :activity-data="activityData"
-      :editor-product-data="editorProductData"
-      :selection="selection"
-      :map-element="mapElement"
-      :map-settings="mapSettings"
-      :data-fields="dataFields"
-      :graph-elements="graphElements"
-      :text-boxes="textBoxes"
-      :photo-elements="photoElements"
-      :badge-list-element="badgeListElement"
-      :achievements="achievements"
-      :qr-code-elements="qrCodeElements"
-      :weather-element="weatherElement"
-      :weather-data="weatherData"
-      @select-element="selectElement"
-      @deselect-all="deselectAll"
-      @update-element-geometry="updateElementGeometry"
-      @update-map-instance="map = $event"
-      @update-element-property="handleElementPropertyUpdate"
-    />
+    <div class="editor-main-area">
+      <div
+        class="placement-controls"
+        v-if="editorProductData && editorProductData.print_areas"
+      >
+        <button
+          v-for="(area, key) in editorProductData.print_areas"
+          :key="key"
+          @click="activePlacement = key"
+          :class="{ active: activePlacement === key }"
+        >
+          {{ area.name }}
+        </button>
+      </div>
+
+      <EditorCanvas
+        ref="editorCanvas"
+        :loading="loading"
+        :activity-data="activityData"
+        :editor-product-data="editorProductData"
+        :print-area-data="activePrintArea"
+        :selection="selection"
+        :map-element="mapElement"
+        :map-settings="mapSettings"
+        :data-fields="dataFields"
+        :graph-elements="graphElements"
+        :text-boxes="textBoxes"
+        :photo-elements="photoElements"
+        :badge-list-element="badgeListElement"
+        :achievements="achievements"
+        :qr-code-elements="qrCodeElements"
+        :weather-element="weatherElement"
+        :weather-data="weatherData"
+        @select-element="selectElement"
+        @deselect-all="deselectAll"
+        @update-element-geometry="updateElementGeometry"
+        @update-map-instance="map = $event"
+        @update-element-property="handleElementPropertyUpdate"
+      />
+    </div>
 
     <EditorTools
       :selection="selection"
@@ -54,7 +71,8 @@
       :can-redo="canRedo"
       :can-paste="canPaste"
       :can-copy-cut-delete="canCopyCutDelete"
-      @save-design="saveDesign"
+      @save-design="handleSave(false)"
+      @save-and-checkout="handleSave(true)"
       @clear-canvas="clearCanvas"
       @undo="undo"
       @redo="redo"
@@ -113,6 +131,7 @@ export default {
   },
   data() {
     return {
+      activePlacement: "front_small",
       editorProductData: null,
       isDirty: false,
       settings: settings,
@@ -323,6 +342,13 @@ export default {
     };
   },
   computed: {
+    activePrintArea() {
+      if (!this.editorProductData || !this.editorProductData.print_areas) {
+        return null;
+      }
+      return this.editorProductData.print_areas[this.activePlacement];
+    },
+
     availableGraphSources() {
       if (!this.activityData || !this.activityData.streams) {
         return [];
@@ -388,6 +414,15 @@ export default {
     },
   },
   watch: {
+    editorProductData(newData) {
+      if (newData && newData.print_areas) {
+        const availablePlacements = Object.keys(newData.print_areas);
+        if (!availablePlacements.includes(this.activePlacement)) {
+          this.activePlacement = availablePlacements[0];
+        }
+      }
+    },
+
     designState: {
       handler() {
         if (this.isApplyingState) return;
@@ -524,7 +559,7 @@ export default {
       }
     },
 
-    async saveDesign() {
+    async handleSave(proceedToCheckout = false) {
       if (!auth.isLoggedIn) {
         notifyInfo("Please log in or create an account to save your design.");
         localStorage.setItem("unsavedDesign", JSON.stringify(this.designState));
@@ -534,12 +569,13 @@ export default {
         });
         return;
       }
+
       const canvasElement = this.$refs.editorCanvas.getCanvasElement();
       if (!canvasElement) {
         notifyError("Could not find the design element to capture.");
         return;
       }
-      const previouslySelected = this.selectedElement;
+
       this.deselectAll();
       let designImageDataUrl = "";
       try {
@@ -554,10 +590,9 @@ export default {
         notifyError(
           "Could not generate a preview of your design. Please try again."
         );
-        this.selectElement(previouslySelected);
         return;
       }
-      this.selectElement(previouslySelected);
+
       const designDataToSave = {
         ...this.designState,
         preview_image: designImageDataUrl,
@@ -565,17 +600,34 @@ export default {
       };
 
       try {
+        const variantId = localStorage.getItem("selectedVariantId");
         const payload = {
           product_id: parseInt(this.productId),
+          variant_id: parseInt(variantId),
           design_data: designDataToSave,
           name: `Design for ${this.activityData.details.name}`,
         };
-        await axios.post("http://localhost:5000/api/designs", payload, {
-          withCredentials: true,
-        });
+
+        const response = await axios.post(
+          "http://localhost:5000/api/designs",
+          payload,
+          {
+            withCredentials: true,
+          }
+        );
+
+        const newDesign = response.data;
+
         notifySuccess("Design saved successfully!");
         localStorage.removeItem("unsavedDesign");
         this.isDirty = false;
+
+        if (proceedToCheckout) {
+          this.$router.push({
+            name: "Checkout",
+            params: { designId: newDesign.id },
+          });
+        }
       } catch (error) {
         console.error("Error saving design:", error);
         notifyError("Failed to save design. Please try again.");
@@ -1349,16 +1401,21 @@ export default {
     window.addEventListener("beforeunload", this.handleBeforeUnload);
     window.addEventListener("keydown", this.handleKeyDown);
 
-    const savedDetails = localStorage.getItem("editorProductData");
-    if (savedDetails) {
-      this.editorProductData = JSON.parse(savedDetails);
-    }
+    try {
+      const productRes = await axios.get(
+        `http://localhost:5000/api/products/${this.productId}`,
+        { withCredentials: true }
+      );
+      this.editorProductData = productRes.data;
 
-    console.log(
-      "%c[DesignView] Data geladen uit localStorage:",
-      "color: blue; font-weight: bold;",
-      this.editorProductData
-    );
+      localStorage.setItem(
+        "editorProductData",
+        JSON.stringify(productRes.data)
+      );
+    } catch (error) {
+      console.error("Error fetching product data:", error);
+      notifyError("Could not load product details.");
+    }
 
     const gpxKey = this.$route.query.gpx_key;
     const designIdToLoad = this.designId || this.$route.query.design_id;
@@ -1445,6 +1502,47 @@ export default {
 </script>
 
 <style scoped>
+.editor-main-area {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  algin-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.placement-controls {
+  margin-bottom: 15px;
+  display: flex;
+  gap: 10px;
+  background-color: #fff;
+  padding: 5px;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.placement-controls button {
+  padding: 8px 16px;
+  border: 1px solid #ccc;
+  background-color: #f9f9f9;
+  cursor: pointer;
+  border-radius: 6px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  text-transform: capitalize;
+}
+
+.placement-controls button:hover {
+  background-color: #e9e9e9;
+  border-color: #aaa;
+}
+
+.placement-controls button.active {
+  background-color: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
 .sidebar-button {
   display: block;
   width: 100%;

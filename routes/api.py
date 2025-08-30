@@ -2,9 +2,12 @@ import requests
 import json
 from datetime import datetime
 from functools import wraps
-from flask import Blueprint, jsonify, request, session, current_app
+from flask import Blueprint, jsonify, request, session, current_app, url_for
 from models import User, Product, Design, Order
 from extensions import db
+import base64
+import os
+from uuid import uuid4
 
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 
@@ -110,8 +113,6 @@ def get_single_product(product_id):
     product = Product.query.get_or_404(product_id)
     return jsonify(product.to_dict())
 
-# In api.py
-
 @api_bp.route('/products/<int:product_id>/printful-details')
 def get_printful_product_details(product_id):
     """
@@ -139,23 +140,18 @@ def get_printful_product_details(product_id):
         variants_info = result.get('variants', [])
         product_info = result.get('product', {})
 
-        # --- NIEUWE, GERICHTE LOGICA ---
         front_template_url = None
         front_template_width = None
         front_template_height = None
         
         if product_info and product_info.get('files'):
-            # We zoeken specifiek naar het 'file' object met type 'front'
             for file_info in product_info.get('files'):
                 if file_info.get('type') == 'front':
-                    # Dit is de juiste template voor de editor!
                     front_template_url = file_info.get('preview_url')
                     front_template_width = file_info.get('width')
                     front_template_height = file_info.get('height')
-                    break # Stop met zoeken zodra we het hebben gevonden
+                    break
 
-        # Veilige fallback: als we om een of andere reden de template niet vinden,
-        # gebruiken we de foto met het model om een crash te voorkomen.
         if not front_template_url and variants_info:
             front_template_url = variants_info[0].get('image')
 
@@ -167,7 +163,6 @@ def get_printful_product_details(product_id):
                     'width': front_template_width,
                     'height': front_template_height
                 }
-                # Je kunt hier een vergelijkbare logica voor 'back' toevoegen
             }
         }
         
@@ -186,14 +181,43 @@ def get_printful_product_details(product_id):
 def create_design():
     data = request.get_json()
     if not data or 'product_id' not in data or 'design_data' not in data:
-        return jsonify({'error': 'Ongeldige data. Vereist: product_id, design_data'}), 400
+        return jsonify({'error': 'Invalid data'}), 400
+
+    design_data = data['design_data']
+    preview_image_b64 = design_data.pop('preview_image', None)
+
+    preview_url = None
+    if preview_image_b64:
+        try:
+            header, encoded = preview_image_b64.split(",", 1)
+            image_data = base64.b64decode(encoded)
+
+            filename = f"{uuid4().hex}.png"
+
+            upload_folder = os.path.join(current_app.static_folder, 'uploads', 'designs')
+            os.makedirs(upload_folder, exist_ok=True)
+
+            filepath = os.path.join(upload_folder, filename)
+            with open(filepath, "wb") as f:
+                f.write(image_data)
+
+            preview_url = url_for('static', filename=f'uploads/designs/{filename}', _external=True)
+            print(f"DEBUG: Afbeelding opgeslagen. URL voor Printful is: {preview_url}")
+
+        except Exception as e:
+            print(f"DEBUG: Kon afbeelding niet opslaan. Fout: {e}")
 
     new_design = Design(
-        user_id=session['user_id'], product_id=data['product_id'],
-        design_data=data['design_data'], name=data.get('name', 'Mijn Ontwerp')
+        user_id=session['user_id'],
+        product_id=data['product_id'],
+        variant_id=data.get('variant_id'),
+        design_data=design_data,
+        preview_url=preview_url,
+        name=data.get('name', 'Mijn Ontwerp')
     )
     db.session.add(new_design)
     db.session.commit()
+
     return jsonify(new_design.to_dict()), 201
 
 @api_bp.route('/designs')
@@ -291,7 +315,7 @@ def delete_profile_with_password():
     return jsonify({'message': 'Account deleted successfully'}), 200
 
 @api_bp.route('/athlete-stats/<int:athlete_id>')
-@login_required # Zorg ervoor dat de gebruiker is ingelogd
+@login_required
 def get_athlete_stats(athlete_id):
     """
     Haalt de all-time statistieken voor een specifieke atleet op.
@@ -300,18 +324,16 @@ def get_athlete_stats(athlete_id):
     if not user or not user.access_token:
         return jsonify({'error': 'Not authenticated with Strava.'}), 401
 
-    # Zorg ervoor dat het token geldig is
     user = refresh_strava_token(user)
     
     try:
         headers = {'Authorization': f'Bearer {user.access_token}'}
-        
-        # Dit is de cruciale API-call naar de stats van de atleet
+
         response = requests.get(f'https://www.strava.com/api/v3/athletes/{athlete_id}/stats', headers=headers)
         response.raise_for_status()
-        
+
         return jsonify(response.json())
-        
+
     except requests.exceptions.HTTPError as e:
         return jsonify({'error': f'Failed to fetch Strava athlete stats: {e}'}), 500
 
@@ -319,7 +341,6 @@ def get_athlete_stats(athlete_id):
 @api_bp.route('/orders', methods=['POST'])
 @login_required
 def create_order():
-    """Creates a new order and submits it to Printful."""
     data = request.get_json()
     design_id = data.get('design_id')
 
@@ -350,8 +371,10 @@ def create_order():
     headers = {
         'Authorization': f'Bearer {printful_api_key}'
     }
-    
-    design_image_data = design.design_data.get('preview_image')
+
+    design_image_url = design.preview_url
+    if not design_image_url:
+        return jsonify({'error': 'Design has no preview image URL.'}), 400
 
     printful_payload = {
         'recipient': {
@@ -363,12 +386,12 @@ def create_order():
         },
         'items': [
             {
-                'variant_id': product.printful_variant_id or 1,
+                'variant_id': design.variant_id,
                 'quantity': 1,
                 'files': [
                     {
                         'type': 'default',
-                        'url': design_image_data
+                        'url': design_image_url
                     }
                 ]
             }
@@ -413,7 +436,32 @@ def get_orders():
         product = Product.query.get(design.product_id)
         order_dict = order.to_dict()
         order_dict['product_name'] = product.name
-        order_dict['product_image_url'] = product.image_url
+
+        if product.print_areas:
+            first_area_key = list(product.print_areas.keys())[0]
+            order_dict['product_image_url'] = product.print_areas[first_area_key]['image_url']
+        else:
+            order_dict['product_image_url'] = None
+
         orders_data.append(order_dict)
-        
+            
     return jsonify(orders_data)
+
+@api_bp.route('/orders/<int:order_id>', methods=['GET'])
+@login_required
+def get_single_order(order_id):
+    order = Order.query.get_or_404(order_id)
+    if order.user_id != session['user_id']:
+        return jsonify({'error': 'Forbidden'}), 403
+
+    order_data = order.to_dict()
+    design = Design.query.get(order.design_id)
+    if design and design.product:
+        order_data['product_name'] = design.product.name
+        if design.product.print_areas:
+            first_area_key = list(design.product.print_areas.keys())[0]
+            order_data['product_image_url'] = design.product.print_areas[first_area_key]['image_url']
+        else:
+            order_data['product_image_url'] = None
+
+    return jsonify(order_data)

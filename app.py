@@ -21,19 +21,15 @@ def create_app(config_class=Config):
     except OSError:
         pass
 
-    # Initialize extensions
     db.init_app(app)
     migrate.init_app(app, db)
 
-    # We definiëren de toegestane origins expliciet.
     allowed_origins = [
         "http://localhost:8081", 
         "https://miles-to-merch.vercel.app"
     ]
     cors.init_app(app, supports_credentials=True, origins=allowed_origins)
-    # --- EINDE VAN DE CORRECTIE ---
 
-    # Registreer blueprints
     app.register_blueprint(auth_bp)
     app.register_blueprint(api_bp)
 

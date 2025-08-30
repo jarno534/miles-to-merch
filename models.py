@@ -1,12 +1,9 @@
 from extensions import db
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
-
-from werkzeug.security import generate_password_hash, check_password_hash
-from extensions import db
-from datetime import datetime
-
 from sqlalchemy import func
+import json
+from sqlalchemy import event
 
 class User(db.Model):
     """User model for storing both local and Strava accounts."""
@@ -53,31 +50,36 @@ class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=True)
-    image_url = db.Column(db.String(200), nullable=True)
     price = db.Column(db.Float, nullable=False)
+    print_areas = db.Column(db.JSON, nullable=True)
     printful_product_id = db.Column(db.Integer, nullable=True)
-
-    editor_template_url_front = db.Column(db.String(512), nullable=True)
-    editor_template_url_back = db.Column(db.String(512), nullable=True)
+    printful_variant_id = db.Column(db.Integer, nullable=True)
+    designs = db.relationship('Design', backref='product', lazy=True)
 
     def to_dict(self):
         return {
-            'id': self.id, 'name': self.name, 'description': self.description,
-            'image_url': self.image_url, 'price': self.price, 'printful_product_id': self.printful_product_id
+            'id': self.id,
+            'name': self.name,
+            'description': self.description,
+            'price': self.price,
+            'print_areas': self.print_areas,
+            'printful_product_id': self.printful_product_id
         }
 
 class Design(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
+    variant_id = db.Column(db.Integer, nullable=True)
+    preview_url = db.Column(db.String(255), nullable=True)
     design_data = db.Column(db.JSON, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     name = db.Column(db.String(100), nullable=False, default="My Design")
 
     def to_dict(self):
         return {
-            'id': self.id, 'user_id': self.user_id, 'product_id': self.product_id,
-            'design_data': self.design_data, 'name': self.name,
+            'id': self.id, 'user_id': self.user_id, 'product_id': self.product_id, 'variant_id': self.variant_id,
+            'preview_url': self.preview_url, 'design_data': self.design_data, 'name': self.name,
             'created_at': self.created_at.isoformat()
         }
 
@@ -100,10 +102,15 @@ class Order(db.Model):
     design = db.relationship('Design', backref=db.backref('order', uselist=False))
 
     def to_dict(self):
+        design_name = self.design.name if self.design else "Unknown Design"
+        product_name = self.design.product.name if self.design and self.design.product else "Unknown Product"
+
         return {
             'id': self.id,
             'order_status': self.order_status,
             'total_price': self.total_price,
             'order_date': self.order_date.isoformat(),
-            'design_id': self.design_id
+            'design_id': self.design_id,
+            'design_name': design_name,
+            'product_name': product_name,
         }
