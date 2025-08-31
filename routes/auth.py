@@ -80,7 +80,6 @@ def status():
             return jsonify({'logged_in': True, 'user': user.to_dict()})
     return jsonify({'logged_in': False}), 401
 
-
 @auth_bp.route('/login/strava')
 def strava_login():
     """Redirects the user to the Strava authentication page."""
@@ -92,23 +91,17 @@ def strava_login():
         f"http://www.strava.com/oauth/authorize?"
         f"client_id={current_app.config['STRAVA_CLIENT_ID']}&"
         f"response_type=code&"
-        f"redirect_uri={current_app.config['STRAVA_REDIRECT_URI']}&"
+        f"redirect_uri={redirect_uri}&"
         f"scope=activity:read_all"
     )
     return redirect(auth_url)
 
 @auth_bp.route('/callback')
 def strava_callback():
-    """
-    Deze functie wordt aangeroepen nadat de gebruiker toestemming heeft gegeven op Strava.
-    Het zoekt een gebruiker op basis van Strava ID, of maakt een nieuwe aan.
-    """
-    # 1. Haal de autorisatiecode op
     auth_code = request.args.get('code')
     if not auth_code:
         return jsonify({"error": "Authorization code not found."}), 400
 
-    # 2. Wissel de code in voor een access token
     token_url = 'https://www.strava.com/oauth/token'
     payload = {
         'client_id': current_app.config['STRAVA_CLIENT_ID'],
@@ -124,42 +117,34 @@ def strava_callback():
     except requests.exceptions.RequestException as e:
         return jsonify({"error": "Failed to get token from Strava", "details": str(e)}), 500
 
-    # 3. Zoek de gebruiker op of maak een nieuwe aan
     athlete_info = token_data.get('athlete', {})
     strava_id = str(athlete_info.get('id'))
 
-    # Zoek of deze Strava gebruiker al in onze database staat
     user = User.query.filter_by(strava_id=strava_id).first()
 
     if not user:
-        # Nieuwe gebruiker: maak een account aan
-        # Haal de voor- en achternaam op van Strava
         firstname = athlete_info.get('firstname', '')
         lastname = athlete_info.get('lastname', '')
         full_name = f"{firstname} {lastname}".strip()
 
         user = User(
             strava_id=strava_id,
-            name=full_name, # Gebruik het 'name' veld uit je model
-            email=None # Strava geeft geen e-mailadres
+            name=full_name,
+            email=None
         )
         db.session.add(user)
 
-    # 4. Update de tokens van de gebruiker (voor zowel nieuwe als bestaande gebruikers)
     user.access_token = token_data.get('access_token')
     user.refresh_token = token_data.get('refresh_token')
     user.expires_at = token_data.get('expires_at')
     
     db.session.commit()
 
-    # 5. Log de gebruiker in in de Flask-sessie
-    session['user_id'] = user.id # Gebruik de sessie direct zoals in je andere functies
+    session['user_id'] = user.id
 
-    # 6. Stuur de gebruiker terug naar het frontend dashboard
-    frontend_url = current_app.config.get('FRONTEND_URL', 'http://localhost:8081')
+    frontend_url = current_app.config.get('FRONTEND_URL')
     return redirect(f"{frontend_url}/activities")
 
-    """Handles the callback from Strava."""
     code = request.args.get('code')
     if not code:
         return 'Authentication failed: no code received', 400
@@ -192,24 +177,15 @@ def strava_callback():
             'expires_at': tokens['expires_at']
         }
     
-    # --- DIT IS DE BELANGRIJKE WIJZIGING ---
-    # Check for a redirect URL stored in the session and remove it
     next_url = session.pop('strava_redirect_next', None)
     if next_url == 'profile':
-        return redirect('http://localhost:8081/profile')
-    
-    # Default redirect for the design flow
-    return redirect('http://localhost:8081/activities')
-    """
-    Handles the callback from Strava.
-    - If a user is logged in, it LINKS the Strava account to their existing account.
-    - If no user is logged in, it creates a temporary GUEST session.
-    """
+        return redirect(f"{current_app.config['FRONTEND_URL']}/profile")
+
+    return redirect(f"{current_app.config['FRONTEND_URL']}/activities")
     code = request.args.get('code')
     if not code:
         return 'Authentication failed: no code received', 400
 
-    # Exchange code for tokens
     token_payload = {
         'client_id': current_app.config['STRAVA_CLIENT_ID'],
         'client_secret': current_app.config['STRAVA_CLIENT_SECRET'],
@@ -220,12 +196,10 @@ def strava_callback():
     if not response.ok:
         return 'Error exchanging code for Strava token.', 500
     tokens = response.json()
-    
+
     strava_athlete_id = tokens['athlete']['id']
 
-    # Check if a user is already logged into our site
     if 'user_id' in session:
-        # User is logged in, so we are LINKING this Strava account
         current_user = User.query.get(session['user_id'])
         current_user.strava_id = strava_athlete_id
         current_user.access_token = tokens['access_token']
@@ -233,13 +207,11 @@ def strava_callback():
         current_user.expires_at = tokens['expires_at']
         db.session.commit()
     else:
-        # User is NOT logged in, create a GUEST session
         session['strava_guest_data'] = {
             'strava_id': strava_athlete_id,
             'access_token': tokens['access_token'],
             'refresh_token': tokens['refresh_token'],
             'expires_at': tokens['expires_at']
         }
-    
-    # Redirect to the frontend activities page
-    return redirect('http://localhost:8081/activities')
+
+    return redirect(f"{current_app.config['FRONTEND_URL']}/activities")

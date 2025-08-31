@@ -2,7 +2,6 @@ import os
 basedir = os.path.abspath(os.path.dirname(__file__))
 
 class Config:
-    """Configuratie-instellingen voor de Flask-applicatie."""
     SECRET_KEY = os.environ.get('SECRET_KEY') or os.urandom(24)
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
         'sqlite:///' + os.path.join(basedir, 'instance', 'site.db')
@@ -11,7 +10,9 @@ class Config:
     # Strava API-instellingen
     STRAVA_CLIENT_ID = os.environ.get('STRAVA_CLIENT_ID')
     STRAVA_CLIENT_SECRET = os.environ.get('STRAVA_CLIENT_SECRET')
-    STRAVA_REDIRECT_URI = 'http://localhost:5000/auth/callback'
 
     # Printful API Settings
     PRINTFUL_API_KEY = os.environ.get('PRINTFUL_API_KEY')
+
+    FRONTEND_URL = os.environ.get('FRONTEND_URL') or 'http://localhost:8081'
+    BACKEND_URL = os.environ.get('BACKEND_URL') or 'http://localhost:5000'
