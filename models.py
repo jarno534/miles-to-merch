@@ -3,29 +3,21 @@ from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import func
 import json
-from sqlalchemy import event
 
 class User(db.Model):
     """User model for storing both local and Strava accounts."""
     id = db.Column(db.Integer, primary_key=True)
-    
-    # Account Info
     email = db.Column(db.String(120), unique=True, nullable=True)
     password_hash = db.Column(db.String(128), nullable=True)
     name = db.Column(db.String(100), nullable=True)
-    
-    # Shipping Info
     shipping_address = db.Column(db.String(200), nullable=True)
     shipping_city = db.Column(db.String(100), nullable=True)
     shipping_zip = db.Column(db.String(20), nullable=True)
     shipping_country = db.Column(db.String(100), nullable=True)
-
-    # Strava Info
     strava_id = db.Column(db.Integer, unique=True, nullable=True)
     access_token = db.Column(db.String(128), nullable=True)
     refresh_token = db.Column(db.String(128), nullable=True)
     expires_at = db.Column(db.Integer, nullable=True)
-    
     designs = db.relationship('Design', backref='user', lazy=True, cascade="all, delete-orphan")
 
     def set_password(self, password):
@@ -46,8 +38,6 @@ class User(db.Model):
             'has_strava_linked': self.strava_id is not None
         }
 
-# In models.py
-
 class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
@@ -58,14 +48,12 @@ class Product(db.Model):
     printful_variant_id = db.Column(db.Integer, nullable=True)
     designs = db.relationship('Design', backref='product', lazy=True)
 
-    # --- THIS FUNCTION IS NOW CORRECTLY INDENTED ---
-     def to_dict(self):
+    def to_dict(self):
         parsed_areas = None
         if self.print_areas:
             try:
                 parsed_areas = json.loads(self.print_areas)
             except (TypeError, json.JSONDecodeError):
-                print(f"Waarschuwing: Kon print_areas niet parsen voor product ID {self.id}")
                 parsed_areas = {}
         return {
             'id': self.id,
@@ -103,25 +91,21 @@ class Design(db.Model):
 class Order(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    design_id = db.Column(db.Integer, db.ForeignKey('design.id'), unique=True, nullable=False) # unique=True to ensure a design is ordered only once
-    
+    design_id = db.Column(db.Integer, db.ForeignKey('design.id'), unique=True, nullable=False)
     order_status = db.Column(db.String(50), nullable=False, default='Pending')
     total_price = db.Column(db.Float, nullable=False)
     order_date = db.Column(db.DateTime, server_default=func.now())
-    
     shipping_name = db.Column(db.String(100))
     shipping_address = db.Column(db.String(200))
     shipping_city = db.Column(db.String(100))
     shipping_zip = db.Column(db.String(20))
     shipping_country = db.Column(db.String(100))
-
     user = db.relationship('User', backref=db.backref('orders', lazy=True, cascade="all, delete-orphan"))
     design = db.relationship('Design', backref=db.backref('order', uselist=False))
 
     def to_dict(self):
         design_name = self.design.name if self.design else "Unknown Design"
         product_name = self.design.product.name if self.design and self.design.product else "Unknown Product"
-
         return {
             'id': self.id,
             'order_status': self.order_status,
