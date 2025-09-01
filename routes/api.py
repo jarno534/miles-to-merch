@@ -446,8 +446,6 @@ def get_single_order(order_id):
 
     return jsonify(order_data)
 
-# --- START VAN TIJDELIJKE DEBUG ROUTE ---
-
 @api_bp.route('/debug-config')
 def debug_config():
     print("\n--- STARTING FLASK CONFIGURATION DEBUG ---")
@@ -466,4 +464,30 @@ def debug_config():
         "keys_found": len(config_keys)
     })
 
-# --- EINDE VAN TIJDELIJKE DEBUG ROUTE ---
+@api_bp.route('/debug-cors-check')
+def debug_cors_check():
+    """
+    Een tijdelijke route om de CORS en Sessie-instellingen 
+    van de live server te controleren.
+    """
+    # Haal alle relevante configuratiewaarden op
+    frontend_url = current_app.config.get('FRONTEND_URL')
+    backend_url = current_app.config.get('BACKEND_URL')
+    
+    session_cookie_samesite = current_app.config.get('SESSION_COOKIE_SAMESITE')
+    session_cookie_secure = current_app.config.get('SESSION_COOKIE_SECURE')
+    session_cookie_domain = current_app.config.get('SESSION_COOKIE_DOMAIN')
+    
+    # Haal de CORS-configuratie direct uit de extensie
+    cors_origins = current_app.extensions['cors'].origins
+    
+    # Geef alles terug als een JSON-object
+    return jsonify({
+        "message": "Live server configuration check",
+        "CORS_origins_being_used": list(cors_origins),
+        "Expected_FRONTEND_URL": frontend_url,
+        "SESSION_COOKIE_SAMESITE": session_cookie_samesite,
+        "SESSION_COOKIE_SECURE": session_cookie_secure,
+        "SESSION_COOKIE_DOMAIN": session_cookie_domain,
+        "BACKEND_URL": backend_url
+    })
