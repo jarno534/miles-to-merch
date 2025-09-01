@@ -87,7 +87,7 @@ def strava_login():
     if next_url:
         session['strava_redirect_next'] = next_url
 
-    redirect_uri = f"{current_app.config['BACKEND_URL']}{url_for('auth.strava_callback')}"
+    redirect_uri = url_for('auth.strava_callback', _external=True)
 
     auth_url = (
         f"http://www.strava.com/oauth/authorize?"

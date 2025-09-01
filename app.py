@@ -9,7 +9,7 @@ import os
 import click
 import json
 from routes.admin import admin_bp
-from extensions import db
+from extensions import db, cors
 
 load_dotenv()
 migrate = Migrate()
@@ -26,6 +26,14 @@ def create_app(config_class=Config):
 
     db.init_app(app)
     migrate.init_app(app, db)
+
+    cors.init_app(
+        app,
+        # Sta expliciet je frontend URL toe
+        origins=["https://miles-to-merch.vercel.app", "http://localhost:8081"], 
+        # Sta cookies toe
+        supports_credentials=True
+    )
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(api_bp)
@@ -87,16 +95,6 @@ def create_app(config_class=Config):
 
         db.session.commit()
         print("Producten succesvol toegevoegd aan de database!")
-
-    @app.after_request
-    def after_request(response):
-        """Voegt de CORS-headers toe aan elke response."""
-        frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost:8081')
-        response.headers.add('Access-Control-Allow-Origin', frontend_url)
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
-        return response
 
     return app
 
