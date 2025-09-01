@@ -35,11 +35,7 @@ def create_app(config_class=Config):
         # Sta alleen requests toe van je frontend URL
         origins=[frontend_url], 
         # Sta cookies toe in de requests
-        supports_credentials=True,
-        # Sta de benodigde headers toe
-        allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
-        # Sta de benodigde methodes toe
-        methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+        supports_credentials=True
     )
 
     app.register_blueprint(auth_bp)

@@ -464,30 +464,28 @@ def debug_config():
         "keys_found": len(config_keys)
     })
 
+# In routes/api.py, vervang de oude debug-functie
+
 @api_bp.route('/debug-cors-check')
 def debug_cors_check():
     """
-    Een tijdelijke route om de CORS en Sessie-instellingen 
+    Een stabiele route om de CORS en Sessie-instellingen 
     van de live server te controleren.
     """
-    # Haal alle relevante configuratiewaarden op
-    frontend_url = current_app.config.get('FRONTEND_URL')
-    backend_url = current_app.config.get('BACKEND_URL')
-    
-    session_cookie_samesite = current_app.config.get('SESSION_COOKIE_SAMESITE')
-    session_cookie_secure = current_app.config.get('SESSION_COOKIE_SECURE')
-    session_cookie_domain = current_app.config.get('SESSION_COOKIE_DOMAIN')
-    
-    # Haal de CORS-configuratie direct uit de extensie
-    cors_origins = current_app.extensions['cors'].origins
-    
-    # Geef alles terug als een JSON-object
-    return jsonify({
-        "message": "Live server configuration check",
-        "CORS_origins_being_used": list(cors_origins),
-        "Expected_FRONTEND_URL": frontend_url,
-        "SESSION_COOKIE_SAMESITE": session_cookie_samesite,
-        "SESSION_COOKIE_SECURE": session_cookie_secure,
-        "SESSION_COOKIE_DOMAIN": session_cookie_domain,
-        "BACKEND_URL": backend_url
-    })
+    try:
+        # Haal de CORS-configuratie op een veiligere manier op
+        cors_origins = current_app.config.get('CORS_ORIGINS', 'Niet gevonden')
+        
+        config_data = {
+            "message": "Live server configuration check",
+            "CORS_origins_being_used": cors_origins,
+            "Expected_FRONTEND_URL": current_app.config.get('FRONTEND_URL'),
+            "SESSION_COOKIE_SAMESITE": current_app.config.get('SESSION_COOKIE_SAMESITE'),
+            "SESSION_COOKIE_SECURE": current_app.config.get('SESSION_COOKIE_SECURE'),
+            "SESSION_COOKIE_DOMAIN": current_app.config.get('SESSION_COOKIE_DOMAIN'),
+            "BACKEND_URL": current_app.config.get('BACKEND_URL')
+        }
+        return jsonify(config_data)
+    except Exception as e:
+        # Als er toch iets misgaat, geef een duidelijke foutmelding terug
+        return jsonify({"error": "Kon configuratie niet lezen", "details": str(e)}), 500

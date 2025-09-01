@@ -90,9 +90,7 @@ class Design(db.Model):
     name = db.Column(db.String(100), nullable=False, default="My Design")
 
     def to_dict(self):
-        # Get the product details using the relationship we defined
         product_info = self.product.to_dict() if self.product else None
-
         return {
             'id': self.id,
             'user_id': self.user_id,
