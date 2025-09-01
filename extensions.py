@@ -1,7 +1,10 @@
+# In extensions.py
+
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 
-# Initialiseer extensies hier zodat ze globaal beschikbaar zijn
-# zonder circulaire importproblemen te veroorzaken.
 db = SQLAlchemy()
+
+# We initialiseren CORS hier zonder de app, 
+# zodat we het later in app.py met de juiste configuratie kunnen opzetten.
 cors = CORS()

@@ -27,11 +27,15 @@ def create_app(config_class=Config):
     db.init_app(app)
     migrate.init_app(app, db)
 
-    allowed_origins = [
-        "http://localhost:8081", 
-        "https://miles-to-merch.vercel.app"
-    ]
-    cors.init_app(app, supports_credentials=True, origins=allowed_origins)
+    # Haal de frontend URL op uit de environment variables, met een fallback voor lokaal
+    frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost:8081')
+    
+    # Configureer CORS om expliciet cookies toe te staan van de frontend URL
+    cors.init_app(
+        app, 
+        supports_credentials=True, 
+        origins=[frontend_url] # Gebruik de URL uit je Vercel environment
+    )
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(api_bp)
