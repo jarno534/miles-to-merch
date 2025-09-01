@@ -27,14 +27,15 @@ def create_app(config_class=Config):
     db.init_app(app)
     migrate.init_app(app, db)
 
-    frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost:8081')
+    allowed_origins = [
+        "https://miles-to-merch.vercel.app",  # Je Vercel frontend
+        "http://localhost:8081"               # Je lokale ontwikkelomgeving
+    ]
 
-    # Configureer CORS expliciet
+    # Configureer CORS met de expliciete lijst
     cors.init_app(
         app,
-        # Sta alleen requests toe van je frontend URL
-        origins=[frontend_url], 
-        # Sta cookies toe in de requests
+        origins=allowed_origins,
         supports_credentials=True
     )
 
