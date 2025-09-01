@@ -1,7 +1,6 @@
 from flask import Flask, jsonify
 from dotenv import load_dotenv
 from config import Config
-from extensions import db, cors
 from models import User, Product, Design, Order
 from routes.auth import auth_bp
 from routes.api import api_bp
@@ -10,6 +9,7 @@ import os
 import click
 import json
 from routes.admin import admin_bp
+from extensions import db
 
 load_dotenv()
 migrate = Migrate()
@@ -31,13 +31,6 @@ def create_app(config_class=Config):
         "https://miles-to-merch.vercel.app",  # Je Vercel frontend
         "http://localhost:8081"               # Je lokale ontwikkelomgeving
     ]
-
-    # Configureer CORS met de expliciete lijst
-    cors.init_app(
-        app,
-        origins="*",  # Sta elke origin toe
-        supports_credentials=True
-    )
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(api_bp)
@@ -99,6 +92,20 @@ def create_app(config_class=Config):
 
         db.session.commit()
         print("Producten succesvol toegevoegd aan de database!")
+
+    @app.after_request
+    def after_request(response):
+        """Voegt de CORS-headers toe aan elke response."""
+        # Haal de frontend URL op uit de environment, met een fallback
+        frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost:8081')
+        
+        # Voeg de cruciale headers toe
+        response.headers.add('Access-Control-Allow-Origin', frontend_url)
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        
+        return response
 
     return app
 
