@@ -64,7 +64,6 @@ export default {
       this.loading = true;
       try {
         const response = await axios.get(`${API_BASE_URL}/api/designs`, {
-          // Correcte backticks
           withCredentials: true,
         });
         this.designs = response.data;

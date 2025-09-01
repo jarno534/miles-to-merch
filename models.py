@@ -59,17 +59,14 @@ class Product(db.Model):
     designs = db.relationship('Design', backref='product', lazy=True)
 
     # --- THIS FUNCTION IS NOW CORRECTLY INDENTED ---
-    def to_dict(self):
+     def to_dict(self):
         parsed_areas = None
         if self.print_areas:
             try:
-                # Try to parse the JSON
                 parsed_areas = json.loads(self.print_areas)
             except (TypeError, json.JSONDecodeError):
-                # If it fails, return an empty dict and log a warning
-                print(f"Warning: Could not parse print_areas for product ID {self.id}")
+                print(f"Waarschuwing: Kon print_areas niet parsen voor product ID {self.id}")
                 parsed_areas = {}
-                
         return {
             'id': self.id,
             'name': self.name,

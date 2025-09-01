@@ -27,11 +27,6 @@ def create_app(config_class=Config):
     db.init_app(app)
     migrate.init_app(app, db)
 
-    allowed_origins = [
-        "https://miles-to-merch.vercel.app",  # Je Vercel frontend
-        "http://localhost:8081"               # Je lokale ontwikkelomgeving
-    ]
-
     app.register_blueprint(auth_bp)
     app.register_blueprint(api_bp)
     app.register_blueprint(admin_bp)
@@ -96,15 +91,11 @@ def create_app(config_class=Config):
     @app.after_request
     def after_request(response):
         """Voegt de CORS-headers toe aan elke response."""
-        # Haal de frontend URL op uit de environment, met een fallback
         frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost:8081')
-        
-        # Voeg de cruciale headers toe
         response.headers.add('Access-Control-Allow-Origin', frontend_url)
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
         response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
         response.headers.add('Access-Control-Allow-Credentials', 'true')
-        
         return response
 
     return app
