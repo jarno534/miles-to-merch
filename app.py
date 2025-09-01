@@ -27,14 +27,19 @@ def create_app(config_class=Config):
     db.init_app(app)
     migrate.init_app(app, db)
 
-    # Haal de frontend URL op uit de environment variables, met een fallback voor lokaal
     frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost:8081')
-    
-    # Configureer CORS om expliciet cookies toe te staan van de frontend URL
+
+    # Configureer CORS expliciet
     cors.init_app(
-        app, 
-        supports_credentials=True, 
-        origins=[frontend_url] # Gebruik de URL uit je Vercel environment
+        app,
+        # Sta alleen requests toe van je frontend URL
+        origins=[frontend_url], 
+        # Sta cookies toe in de requests
+        supports_credentials=True,
+        # Sta de benodigde headers toe
+        allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+        # Sta de benodigde methodes toe
+        methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
     )
 
     app.register_blueprint(auth_bp)
