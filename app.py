@@ -35,7 +35,7 @@ def create_app(config_class=Config):
     # Configureer CORS met de expliciete lijst
     cors.init_app(
         app,
-        origins=allowed_origins,
+        origins="*",  # Sta elke origin toe
         supports_credentials=True
     )
 
