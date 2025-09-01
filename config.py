@@ -16,3 +16,7 @@ class Config:
 
     FRONTEND_URL = os.environ.get('FRONTEND_URL') or 'http://localhost:8081'
     BACKEND_URL = os.environ.get('BACKEND_URL') or 'http://localhost:5000'
+
+    SESSION_COOKIE_SAMESITE = os.environ.get('SESSION_COOKIE_SAMESITE')
+    SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', 'False').lower() in ('true', '1', 't')
+    SESSION_COOKIE_DOMAIN = os.environ.get('SESSION_COOKIE_DOMAIN')

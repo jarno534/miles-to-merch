@@ -57,14 +57,24 @@ class Product(db.Model):
     designs = db.relationship('Design', backref='product', lazy=True)
 
     def to_dict(self):
-        return {
-            'id': self.id,
-            'name': self.name,
-            'description': self.description,
-            'price': self.price,
-            'print_areas': json.loads(self.print_areas) if self.print_areas else None,
-            'printful_product_id': self.printful_product_id
-        }
+    parsed_areas = None
+    if self.print_areas:
+        try:
+            # Probeer de JSON te parsen
+            parsed_areas = json.loads(self.print_areas)
+        except (TypeError, json.JSONDecodeError):
+            # Als het mislukt, geef een lege dict terug en log een waarschuwing
+            print(f"Waarschuwing: Kon print_areas niet parsen voor product ID {self.id}")
+            parsed_areas = {}
+            
+    return {
+        'id': self.id,
+        'name': self.name,
+        'description': self.description,
+        'price': self.price,
+        'print_areas': parsed_areas,
+        'printful_product_id': self.printful_product_id
+    }
 
 class Design(db.Model):
     id = db.Column(db.Integer, primary_key=True)
