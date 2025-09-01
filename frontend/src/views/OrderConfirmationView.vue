@@ -53,6 +53,7 @@
 <script>
 import axios from "axios";
 import SpinnerComponent from "@/components/SpinnerComponent.vue";
+import API_BASE_URL from "@/apiConfig";
 
 export default {
   name: "OrderConfirmationView",
@@ -71,9 +72,8 @@ export default {
   },
   async created() {
     try {
-      // Deze API call haalt de details van de zojuist gemaakte bestelling op
       const response = await axios.get(
-        `http://localhost:5000/api/orders/${this.orderId}`,
+        `${API_BASE_URL}/api/orders/${this.orderId}`,
         {
           withCredentials: true,
         }
@@ -90,7 +90,6 @@ export default {
 </script>
 
 <style scoped>
-/* Deze stijlen zijn een mix van jouw code en een paar verbeteringen */
 .confirmation-page {
   max-width: 700px;
   margin: 40px auto;

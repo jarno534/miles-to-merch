@@ -30,6 +30,8 @@
 import { auth } from "./auth";
 import axios from "axios";
 import { useRouter } from "vue-router";
+import API_BASE_URL from "@/apiConfig";
+import { notifySuccess, notifyError } from "./notifications";
 
 export default {
   setup() {
@@ -38,7 +40,7 @@ export default {
     const logout = async () => {
       try {
         await axios.post(
-          "http://localhost:5000/auth/logout",
+          `${API_BASE_URL}/auth/logout`,
           {},
           { withCredentials: true }
         );
@@ -54,6 +56,78 @@ export default {
       auth,
       logout,
     };
+  },
+
+  watch: {
+    "auth.isLoggedIn": function (isNowLoggedIn, wasPreviouslyLoggedIn) {
+      if (isNowLoggedIn && !wasPreviouslyLoggedIn) {
+        setTimeout(async () => {
+          console.log("User logged in. Checking for unsaved design...");
+
+          const unsavedDesignJSON = localStorage.getItem("unsavedDesign");
+          if (unsavedDesignJSON) {
+            try {
+              const designState = JSON.parse(unsavedDesignJSON);
+
+              // Haal IDs nu direct uit het opgeslagen design object
+              const productId = designState.productId;
+              const variantId = localStorage.getItem("selectedVariantId"); // variantId komt nog steeds apart
+
+              if (!productId) {
+                console.error(
+                  "Product ID is missing from the recovered design."
+                );
+                // Ruim op om verdere fouten te voorkomen
+                localStorage.removeItem("unsavedDesign");
+                localStorage.removeItem("proceedToCheckout");
+                return;
+              }
+
+              // Preview is niet beschikbaar, dus we halen die weg
+              const designDataToSave = { ...designState };
+              delete designDataToSave.preview_image;
+
+              const payload = {
+                product_id: parseInt(productId),
+                variant_id: variantId ? parseInt(variantId) : null,
+                design_data: designDataToSave,
+                name: `Recovered Design for ${designState.activityId}`,
+              };
+
+              const response = await axios.post(
+                `${API_BASE_URL}/api/designs`,
+                payload,
+                { withCredentials: true }
+              );
+              const newDesign = response.data;
+              notifySuccess(
+                "Your unsaved design has been successfully recovered!"
+              );
+
+              const proceed =
+                localStorage.getItem("proceedToCheckout") === "true";
+              localStorage.removeItem("unsavedDesign");
+              localStorage.removeItem("proceedToCheckout");
+              localStorage.removeItem("selectedProductId"); // Deze is nu overbodig, maar ruimen we toch op
+
+              if (proceed) {
+                this.$router.push({
+                  name: "Checkout",
+                  params: { designId: newDesign.id },
+                });
+              } else {
+                this.$router.push({ name: "MyDesigns" });
+              }
+            } catch (error) {
+              console.error("Failed to recover unsaved design:", error);
+              notifyError("We couldn't recover your unsaved design.");
+              localStorage.removeItem("unsavedDesign");
+              localStorage.removeItem("proceedToCheckout");
+            }
+          }
+        }, 200);
+      }
+    },
   },
   async created() {
     await auth.checkAuthStatus();

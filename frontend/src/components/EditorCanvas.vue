@@ -16,6 +16,7 @@
         ref="tshirtMockup"
         :style="designAreaStyle"
         @click="$emit('deselect-all')"
+        :class="{ 'is-active': selection.type }"
       >
         <div
           v-if="mapElement.visible"
@@ -188,6 +189,145 @@
             ></div>
           </template>
         </div>
+
+        <div
+          v-if="badgeListElement.visible"
+          :class="[
+            'design-area',
+            'badge-list-area',
+            {
+              selected: selection.type === 'badgeList',
+              'is-transparent': badgeListElement.transparentBg,
+            },
+          ]"
+          :style="getBadgeListStyle"
+          @mousedown.prevent="startDrag($event, badgeListElement)"
+          @click.stop="$emit('select-element', 'badgeList', badgeListElement)"
+        >
+          <div class="badge-list-content">
+            <p
+              v-for="badge in visibleBadges"
+              :key="badge.id"
+              class="badge-list-item"
+            >
+              {{ badge.text }}
+            </p>
+          </div>
+          <template v-if="selection.type === 'badgeList'">
+            <div
+              v-for="handle in resizeHandles"
+              :key="handle"
+              :class="`resize-handle ${handle}`"
+              @mousedown.stop.prevent="
+                startResize($event, badgeListElement, handle)
+              "
+            ></div>
+          </template>
+        </div>
+
+        <div
+          v-for="qrCode in qrCodeElements"
+          :key="qrCode.id"
+          :class="[
+            'design-area',
+            'qr-code-area',
+            {
+              selected: selection.item && selection.item.id === qrCode.id,
+              'is-transparent': qrCode.transparentBg,
+            },
+          ]"
+          :style="getQrCodeElementStyle(qrCode)"
+          @mousedown.prevent="startDrag($event, qrCode)"
+          @click.stop="$emit('select-element', 'qrCode', qrCode)"
+        >
+          <div class="qr-code-wrapper">
+            <img
+              v-if="qrCode.dataUrl"
+              :src="qrCode.dataUrl"
+              class="qr-image"
+              alt="QR Code"
+            />
+            <div
+              v-else-if="qrCode.linkType === 'custom' && !qrCode.customLink"
+              class="photo-placeholder"
+            >
+              Enter a URL
+            </div>
+            <div v-else class="photo-placeholder">Generating QR...</div>
+            <div v-if="qrCode.showText" class="qr-text-container">
+              <textarea
+                v-if="selection.item && selection.item.id === qrCode.id"
+                class="qr-text-input"
+                v-model="qrCode.text"
+                @blur="logQrTextUpdate(qrCode)"
+                @click.stop
+                :style="getQrTextStyle(qrCode)"
+              ></textarea>
+              <span v-else class="qr-text" :style="getQrTextStyle(qrCode)">{{
+                qrCode.text
+              }}</span>
+            </div>
+          </div>
+          <template v-if="selection.item && selection.item.id === qrCode.id">
+            <div
+              v-for="handle in resizeHandles"
+              :key="handle"
+              :class="`resize-handle ${handle}`"
+              @mousedown.stop.prevent="startResize($event, qrCode, handle)"
+            ></div>
+          </template>
+        </div>
+
+        <div
+          v-if="weatherElement.visible"
+          :class="[
+            'design-area',
+            'weather-area',
+            {
+              selected: selection.type === 'weather',
+              'is-transparent': weatherElement.transparentBg,
+            },
+          ]"
+          :style="{
+            transform: `translate(-50%, -50%) translate(${weatherElement.x}px, ${weatherElement.y}px)`,
+            width: `${weatherElement.width}px`,
+            height: `${weatherElement.height}px`,
+            zIndex: weatherElement.zIndex,
+            color: weatherElement.textColor,
+            fontSize: `${weatherElement.fontSize}px`,
+            backgroundColor: weatherElement.transparentBg
+              ? 'transparent'
+              : weatherElement.backgroundColor,
+            cursor:
+              activeInteraction.element?.id === weatherElement.id
+                ? 'grabbing'
+                : 'grab',
+            borderRadius: `${weatherElement.borderRadius || 0}px`,
+            overflow: weatherElement.borderRadius > 0 ? 'hidden' : 'visible',
+          }"
+          @mousedown.prevent="startDrag($event, weatherElement)"
+          @click.stop="$emit('select-element', 'weather', weatherElement)"
+        >
+          <div v-if="weatherData" class="weather-content">
+            <span v-if="weatherElement.showIcon" class="weather-icon-emoji">{{
+              weatherData.icon
+            }}</span>
+            <div class="weather-details">
+              <span class="weather-temp">{{ weatherData.temp }}&deg;C</span>
+              <span class="weather-desc">{{ weatherData.description }}</span>
+            </div>
+          </div>
+          <template v-if="selection.type === 'weather'">
+            <div
+              v-for="handle in resizeHandles"
+              :key="handle"
+              :class="`resize-handle ${handle}`"
+              @mousedown.stop.prevent="
+                startResize($event, weatherElement, handle)
+              "
+            ></div>
+          </template>
+        </div>
       </div>
     </div>
   </div>
@@ -212,17 +352,21 @@ const gradientColorSchemes = {
 
 export default {
   name: "EditorCanvas",
+
   components: { GraphComponent },
+
   props: {
     printAreaData: {
       type: Object,
       default: null,
     },
+
     selection: {
       type: Object,
       required: true,
       default: () => ({ type: null, item: null }),
     },
+
     loading: Boolean,
     activityData: Object,
     mapElement: Object,
@@ -237,6 +381,7 @@ export default {
     weatherElement: Object,
     weatherData: Object,
   },
+
   emits: [
     "select-element",
     "deselect-all",
@@ -256,6 +401,7 @@ export default {
       initialMouse: { x: 0, y: 0 },
       initialElementState: { x: 0, y: 0, width: 0, height: 0 },
       minSize: 50,
+
       resizeHandles: [
         "top-left",
         "top",
@@ -282,15 +428,37 @@ export default {
     },
 
     designAreaStyle() {
-      if (this.printAreaData) {
-        return {
-          width: `${this.printAreaData.width}px`,
-          height: `${this.printAreaData.height}px`,
-          top: `${this.printAreaData.top}px`,
-          left: `${this.printAreaData.left}px`,
-        };
+      if (!this.printAreaData) {
+        return { display: "none" }; // Verberg de canvas als er geen data is
       }
-      return {};
+
+      const {
+        width, // bv: 1200 (pixels van het printvlak)
+        height, // bv: 1600
+        top, // bv: 350
+        left, // bv: 400
+        mockup_width, // bv: 2000 (referentiegrootte van de T-shirt afbeelding)
+        mockup_height, // bv: 2000
+      } = this.printAreaData;
+
+      // Voorkom fouten als de data incompleet is
+      if (!width || !height || !mockup_width || !mockup_height) {
+        return { width: "45%", height: "60%" }; // Fallback
+      }
+
+      // Bereken de positie en grootte als percentages
+      const widthPercent = (width / mockup_width) * 100;
+      const heightPercent = (height / mockup_height) * 100;
+      const topPercent = (top / mockup_height) * 100;
+      const leftPercent = (left / mockup_width) * 100;
+
+      return {
+        width: `${widthPercent}%`,
+        height: `${heightPercent}%`,
+        top: `${topPercent}%`,
+        left: `${leftPercent}%`,
+        transform: "none", // We gebruiken nu geen transform meer voor de positionering
+      };
     },
 
     is3DMode() {
@@ -412,6 +580,15 @@ export default {
   },
 
   watch: {
+    // --- CONTROLE 2: LOGGEN WANNEER DE DATA BINNENKOMT ---
+    printAreaData: {
+      handler(newValue) {
+        console.log("Prop 'printAreaData' is bijgewerkt:", newValue);
+      },
+      immediate: true, // Log de waarde direct bij het laden
+      deep: true,
+    },
+
     loading(isLoading, wasLoading) {
       if (wasLoading && !isLoading) {
         this.$nextTick(() => {
@@ -419,33 +596,38 @@ export default {
         });
       }
     },
+
     "mapSettings.pitch"() {
       this.updateCamera3D();
     },
+
     "mapSettings.bearing"() {
       this.updateCamera3D();
     },
+
     "mapSettings.style"() {
       this.initializeMap();
     },
+
     "mapSettings.visuals": "updateMapTileLayer",
     "mapSettings.lineColor": "updateMap",
     "mapSettings.lineWeight": "updateMap",
     "mapSettings.gradientData": "updateMap",
     "mapSettings.showStartEndMarkers": "updateStartEndMarkers",
-
     "mapElement.width"() {
       this.$nextTick(() => {
         this.map2DInstance?.invalidateSize();
         this.map3DInstance?.resize();
       });
     },
+
     "mapElement.height"() {
       this.$nextTick(() => {
         this.map2DInstance?.invalidateSize();
         this.map3DInstance?.resize();
       });
     },
+
     selection: {
       handler(newSelection) {
         if (newSelection.type === "map") {
@@ -1154,6 +1336,7 @@ export default {
   justify-content: center;
   align-items: center;
   padding: 0;
+  min-height: 0;
 }
 
 .loading-message {
@@ -1172,8 +1355,10 @@ export default {
 
 .tshirt-mockup {
   position: relative;
-  width: 600px;
-  height: 750px;
+  width: 100%;
+  height: 100%;
+  max-width: 90vh;
+  aspect-ratio: 600 / 750;
   background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
@@ -1181,19 +1366,25 @@ export default {
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
+.design-area-container {
+  position: absolute;
+  transform-style: preserve-3d;
+  overflow: hidden;
+  transition: background-color 0.2s, box-shadow 0.2s;
+}
+
+.design-area-container.is-active {
+  background-color: rgba(0, 0, 0, 0.05);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1) inset;
+}
+
 .design-area {
   position: absolute;
   left: 50%;
   top: 50%;
   border: 2px dashed transparent;
-  background-color: rgba(255, 255, 255, 0.1);
   cursor: grab;
   will-change: transform, width, height;
-}
-
-.design-area-container {
-  position: absolute;
-  transform-style: preserve-3d;
 }
 
 .design-area.selected {

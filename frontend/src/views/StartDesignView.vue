@@ -51,8 +51,9 @@
 </template>
 
 <script>
-import { auth } from "../auth"; // <-- Import the auth state
+import { auth } from "../auth";
 import gpxParser from "gpxparser";
+import API_BASE_URL from "@/apiConfig";
 
 export default {
   name: "StartDesignView",
@@ -65,7 +66,7 @@ export default {
   data() {
     return {
       gpxError: null,
-      auth: auth, // <-- Expose the auth state to the template
+      auth: auth,
     };
   },
   methods: {
@@ -74,7 +75,7 @@ export default {
       if (auth.isLoggedIn && auth.user.has_strava_linked) {
         this.$router.push({ name: "Activities" });
       } else {
-        window.location.href = "http://localhost:5000/auth/login/strava";
+        window.location.href = `${API_BASE_URL}/auth/login/strava`;
       }
     },
 
@@ -86,7 +87,7 @@ export default {
       const reader = new FileReader();
 
       reader.onload = (e) => {
-        const gpxText = e.target.result; // De ruwe tekst van het bestand
+        const gpxText = e.target.result;
         try {
           const gpx = new gpxParser();
           gpx.parse(gpxText);
@@ -101,7 +102,6 @@ export default {
             );
           }
 
-          // Geef de ruwe tekst mee aan de formatter
           const activityData = this.formatGpxData(gpx, gpxText);
 
           console.log("Stap 1: Finaal activityData object:", activityData);

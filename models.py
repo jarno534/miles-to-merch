@@ -62,7 +62,7 @@ class Product(db.Model):
             'name': self.name,
             'description': self.description,
             'price': self.price,
-            'print_areas': self.print_areas,
+            'print_areas': json.loads(self.print_areas) if self.print_areas else None,
             'printful_product_id': self.printful_product_id
         }
 
@@ -77,10 +77,19 @@ class Design(db.Model):
     name = db.Column(db.String(100), nullable=False, default="My Design")
 
     def to_dict(self):
+        # Get the product details using the relationship we defined
+        product_info = self.product.to_dict() if self.product else None
+
         return {
-            'id': self.id, 'user_id': self.user_id, 'product_id': self.product_id, 'variant_id': self.variant_id,
-            'preview_url': self.preview_url, 'design_data': self.design_data, 'name': self.name,
-            'created_at': self.created_at.isoformat()
+            'id': self.id,
+            'user_id': self.user_id,
+            'product_id': self.product_id,
+            'variant_id': self.variant_id,
+            'preview_url': self.preview_url,
+            'design_data': self.design_data,
+            'name': self.name,
+            'created_at': self.created_at.isoformat(),
+            'product': product_info
         }
 
 class Order(db.Model):

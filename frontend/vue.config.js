@@ -1,4 +1,3 @@
-// vue.config.js
 module.exports = {
   chainWebpack: (config) => {
     config.plugin("define").tap((args) => {
@@ -6,5 +5,11 @@ module.exports = {
         JSON.stringify(false);
       return args;
     });
+  },
+
+  devServer: {
+    static: {
+      directory: require("path").join(__dirname, "public"),
+    },
   },
 };

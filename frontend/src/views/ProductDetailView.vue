@@ -65,6 +65,7 @@
 <script>
 import axios from "axios";
 import SpinnerComponent from "@/components/SpinnerComponent.vue";
+import API_BASE_URL from "@/apiConfig";
 
 export default {
   name: "ProductDetailView",
@@ -169,13 +170,13 @@ export default {
   async created() {
     try {
       const productRes = await axios.get(
-        `http://localhost:5000/api/products/${this.productId}`
+        `${API_BASE_URL}/api/products/${this.productId}`
       );
       this.product = productRes.data;
 
       if (this.product.printful_product_id) {
         const detailsRes = await axios.get(
-          `http://localhost:5000/api/products/${this.productId}/printful-details`
+          `${API_BASE_URL}/api/products/${this.productId}/printful-details`
         );
         this.printfulProductDetails = detailsRes.data;
         this.variants = detailsRes.data.variants;

@@ -33,6 +33,7 @@
 <script>
 import axios from "axios";
 import SpinnerComponent from "@/components/SpinnerComponent.vue";
+import API_BASE_URL from "@/apiConfig";
 
 export default {
   name: "HomeView",
@@ -63,7 +64,7 @@ export default {
 
     async fetchProducts() {
       try {
-        const response = await axios.get("http://localhost:5000/api/products");
+        const response = await axios.get(`${API_BASE_URL}/api/products`);
         this.products = response.data;
       } catch (error) {
         console.error("Error fetching products:", error);

@@ -115,65 +115,34 @@ def get_single_product(product_id):
 
 @api_bp.route('/products/<int:product_id>/printful-details')
 def get_printful_product_details(product_id):
-    """
-    Fetches detailed product information from Printful, including
-    variants, mockup images, and print area specifications.
-    """
+    """Haalt alle varianten (kleuren, maten) op van een specifiek Printful product."""
     product = Product.query.get_or_404(product_id)
     if not product.printful_product_id:
-        return jsonify({'error': 'Product is not configured for Printful'}), 404
+        return jsonify({'error': 'Product does not have a Printful ID'}), 404
 
     printful_api_key = current_app.config.get('PRINTFUL_API_KEY')
     if not printful_api_key:
-        return jsonify({'error': 'Printful API key is not configured'}), 500
-    
+        return jsonify({'error': 'Printful API key not configured'}), 500
+
     headers = {'Authorization': f'Bearer {printful_api_key}'}
-    
+    url = f'https://api.printful.com/products/{product.printful_product_id}'
+
     try:
-        url = f'https://api.printful.com/products/{product.printful_product_id}'
         response = requests.get(url, headers=headers)
         response.raise_for_status()
+        data = response.json().get('result', {})
         
-        data = response.json()
-        result = data.get('result', {})
-        
-        variants_info = result.get('variants', [])
-        product_info = result.get('product', {})
-
-        front_template_url = None
-        front_template_width = None
-        front_template_height = None
-        
-        if product_info and product_info.get('files'):
-            for file_info in product_info.get('files'):
-                if file_info.get('type') == 'front':
-                    front_template_url = file_info.get('preview_url')
-                    front_template_width = file_info.get('width')
-                    front_template_height = file_info.get('height')
-                    break
-
-        if not front_template_url and variants_info:
-            front_template_url = variants_info[0].get('image')
-
-        filtered_data = {
-            'variants': variants_info,
-            'print_areas': {
-                'front': {
-                    'url': front_template_url,
-                    'width': front_template_width,
-                    'height': front_template_height
-                }
-            }
-        }
-        
-        return jsonify(filtered_data)
-
+        # We sturen de varianten en mockups door naar de frontend
+        return jsonify({
+            'variants': data.get('variants', []),
+            'mockups': data.get('mockups', []) 
+        })
     except requests.exceptions.RequestException as e:
-        error_message = f"Failed to fetch product details from Printful: {e}"
+        error_message = f"Failed to fetch Printful details: {e}"
         if e.response:
-            error_message += f" | Response: {e.response.text}"
+            error_message += f" | Status: {e.response.status_code} | Response: {e.response.text}"
         print(error_message)
-        return jsonify({'error': 'Failed to fetch product details from Printful.'}), 502
+        return jsonify({'error': 'Failed to communicate with Printful.'}), 502
 
 # --- Design Routes ---
 @api_bp.route('/designs', methods=['POST'])
@@ -201,8 +170,10 @@ def create_design():
             with open(filepath, "wb") as f:
                 f.write(image_data)
 
-            preview_url = url_for('static', filename=f'uploads/designs/{filename}', _external=True)
-            print(f"DEBUG: Afbeelding opgeslagen. URL voor Printful is: {preview_url}")
+            base_url = current_app.config.get('BACKEND_URL', '').rstrip('/')
+            preview_url = f"{base_url}/static/uploads/designs/{filename}"
+
+            print(f"DEBUG: Afbeelding opgeslagen. Publieke URL voor Printful is: {preview_url}")
 
         except Exception as e:
             print(f"DEBUG: Kon afbeelding niet opslaan. Fout: {e}")
@@ -292,6 +263,9 @@ def update_profile():
     user.shipping_city = data.get('shipping_city', user.shipping_city)
     user.shipping_zip = data.get('shipping_zip', user.shipping_zip)
     user.shipping_country = data.get('shipping_country', user.shipping_country)
+
+    if 'password' in data and data['password']:
+        user.set_password(data['password'])
 
     db.session.commit()
     return jsonify(user.to_dict())

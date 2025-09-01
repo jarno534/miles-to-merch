@@ -6,6 +6,8 @@
       :available-graph-sources="availableGraphSources"
       :activity-photos="activityPhotos"
       :weather-data="weatherData"
+      :editor-product-data="editorProductData"
+      v-model:active-placement="activePlacement"
       v-model:achievements="achievements"
       v-model:mapSettings="mapSettings"
       v-model:dataFields="dataFields"
@@ -25,20 +27,6 @@
     />
 
     <div class="editor-main-area">
-      <div
-        class="placement-controls"
-        v-if="editorProductData && editorProductData.print_areas"
-      >
-        <button
-          v-for="(area, key) in editorProductData.print_areas"
-          :key="key"
-          @click="activePlacement = key"
-          :class="{ active: activePlacement === key }"
-        >
-          {{ area.name }}
-        </button>
-      </div>
-
       <EditorCanvas
         ref="editorCanvas"
         :loading="loading"
@@ -105,6 +93,7 @@ import { settings } from "../settings";
 import html2canvas from "html2canvas";
 import { notifySuccess, notifyError, notifyInfo } from "../notifications";
 import UnitsModal from "@/components/UnitsModal.vue";
+import API_BASE_URL from "@/apiConfig";
 
 export default {
   name: "DesignView",
@@ -131,7 +120,7 @@ export default {
   },
   data() {
     return {
-      activePlacement: "front_small",
+      activePlacement: "front",
       editorProductData: null,
       isDirty: false,
       settings: settings,
@@ -341,12 +330,13 @@ export default {
       },
     };
   },
+
   computed: {
     activePrintArea() {
-      if (!this.editorProductData || !this.editorProductData.print_areas) {
-        return null;
+      if (this.editorProductData && this.editorProductData.print_areas) {
+        return this.editorProductData.print_areas[this.activePlacement] || null;
       }
-      return this.editorProductData.print_areas[this.activePlacement];
+      return null;
     },
 
     availableGraphSources() {
@@ -401,6 +391,8 @@ export default {
     },
     designState() {
       return {
+        productId: this.productId,
+        activityId: this.activityId,
         mapSettings: JSON.parse(JSON.stringify(this.mapSettings)),
         mapElement: JSON.parse(JSON.stringify(this.mapElement)),
         dataFields: JSON.parse(JSON.stringify(this.dataFields)),
@@ -560,16 +552,22 @@ export default {
     },
 
     async handleSave(proceedToCheckout = false) {
+      // --- NIEUWE LOGICA VOOR NIET-INGELOGDE GEBRUIKERS ---
       if (!auth.isLoggedIn) {
-        notifyInfo("Please log in or create an account to save your design.");
+        notifyInfo("Please create an account to save your design.");
+        // Sla het huidige design en de checkout-intentie op in localStorage
         localStorage.setItem("unsavedDesign", JSON.stringify(this.designState));
+        localStorage.setItem("proceedToCheckout", proceedToCheckout);
+
+        // Stuur de gebruiker naar de registratiepagina met een redirect-query
         this.$router.push({
           name: "Register",
           query: { redirect: this.$route.fullPath },
         });
-        return;
+        return; // Stop de functie hier
       }
 
+      // --- BESTAANDE LOGICA VOOR INGELOGDE GEBRUIKERS ---
       const canvasElement = this.$refs.editorCanvas.getCanvasElement();
       if (!canvasElement) {
         notifyError("Could not find the design element to capture.");
@@ -609,7 +607,7 @@ export default {
         };
 
         const response = await axios.post(
-          "http://localhost:5000/api/designs",
+          `${API_BASE_URL}/api/designs`,
           payload,
           {
             withCredentials: true,
@@ -619,7 +617,6 @@ export default {
         const newDesign = response.data;
 
         notifySuccess("Design saved successfully!");
-        localStorage.removeItem("unsavedDesign");
         this.isDirty = false;
 
         if (proceedToCheckout) {
@@ -1394,89 +1391,75 @@ export default {
   },
 
   async mounted() {
-    if (!localStorage.getItem("user-units")) {
-      this.isUnitsModalVisible = true;
-    }
+    this.loading = true;
+
+    localStorage.setItem("selectedProductId", this.productId);
 
     window.addEventListener("beforeunload", this.handleBeforeUnload);
     window.addEventListener("keydown", this.handleKeyDown);
 
+    if (!localStorage.getItem("user-units")) {
+      this.isUnitsModalVisible = true;
+    }
+
     try {
-      const productRes = await axios.get(
-        `http://localhost:5000/api/products/${this.productId}`,
-        { withCredentials: true }
-      );
+      const [productRes, activityRes] = await Promise.all([
+        axios.get(`${API_BASE_URL}/api/products/${this.productId}`, {
+          withCredentials: true,
+        }),
+        axios.get(`${API_BASE_URL}/api/activities/${this.activityId}`, {
+          withCredentials: true,
+        }),
+      ]);
+
       this.editorProductData = productRes.data;
+      this.activityData = activityRes.data;
+      this.activityPhotos = activityRes.data.photos || [];
 
-      localStorage.setItem(
-        "editorProductData",
-        JSON.stringify(productRes.data)
-      );
-    } catch (error) {
-      console.error("Error fetching product data:", error);
-      notifyError("Could not load product details.");
-    }
-
-    const gpxKey = this.$route.query.gpx_key;
-    const designIdToLoad = this.designId || this.$route.query.design_id;
-    if (gpxKey) {
-      const gpxDataString = localStorage.getItem(gpxKey);
-      if (gpxDataString) {
-        this.activityData = JSON.parse(gpxDataString);
-        localStorage.removeItem(gpxKey);
-      }
-    } else if (this.activityId) {
-      try {
-        const res = await axios.get(
-          `http://localhost:5000/api/activities/${this.activityId}`,
-          { withCredentials: true }
+      if (this.editorProductData.print_areas) {
+        const availablePlacements = Object.keys(
+          this.editorProductData.print_areas
         );
-        this.activityData = res.data;
-        this.activityPhotos = res.data.photos || [];
-        if (this.activityData && this.activityData.details.athlete.id) {
-          const athleteId = this.activityData.details.athlete.id;
-          try {
-            const statsRes = await axios.get(
-              `http://localhost:5000/api/athlete-stats/${athleteId}`,
-              { withCredentials: true }
-            );
-            this.athleteStats = statsRes.data;
-            this.analyzeAchievements();
-          } catch (statsError) {
-            console.error(
-              "Fout bij het ophalen van atleetstatistieken:",
-              statsError
-            );
-          }
+        if (availablePlacements.length > 0) {
+          this.activePlacement = availablePlacements[0];
         }
-      } catch (error) {
-        console.error("Error fetching activity data:", error);
       }
-    }
 
-    const unsavedDesign = localStorage.getItem("unsavedDesign");
-    if (auth.isLoggedIn && unsavedDesign) {
-      this.loadState(JSON.parse(unsavedDesign));
-      localStorage.removeItem("unsavedDesign");
-      await this.saveDesign();
-    } else if (designIdToLoad) {
-      try {
+      if (this.activityData && this.activityData.details.athlete.id) {
+        const athleteId = this.activityData.details.athlete.id;
+        try {
+          const statsRes = await axios.get(
+            `${API_BASE_URL}/api/athlete-stats/${athleteId}`,
+            { withCredentials: true }
+          );
+          this.athleteStats = statsRes.data;
+          this.analyzeAchievements();
+        } catch (statsError) {
+          console.error("Fout bij ophalen atleetstatistieken:", statsError);
+        }
+      }
+
+      const designIdToLoad = this.designId || this.$route.query.design_id;
+      const unsavedDesign = localStorage.getItem("autosavedDesign");
+
+      if (designIdToLoad) {
         const res = await axios.get(
-          `http://localhost:5000/api/designs/${designIdToLoad}`,
+          `${API_BASE_URL}/api/designs/${designIdToLoad}`,
           { withCredentials: true }
         );
         this.loadState(res.data.design_data);
-      } catch (error) {
-        console.error("Failed to load existing design:", error);
+      } else if (unsavedDesign) {
+        this.loadState(JSON.parse(unsavedDesign));
       }
-    } else if (unsavedDesign) {
-      this.loadState(JSON.parse(unsavedDesign));
+    } catch (error) {
+      console.error("Fout bij het laden van de editor data:", error);
+      notifyError("Er is iets misgegaan bij het laden van de editor.");
+    } finally {
+      this.mapElement.visible = true;
+      this.history.push(this.designState);
+      this.historyIndex = 0;
+      this.loading = false;
     }
-
-    this.mapElement.visible = true;
-    this.history.push(this.designState);
-    this.historyIndex = 0;
-    this.loading = false;
   },
 
   beforeUnmount() {
@@ -1509,38 +1492,8 @@ export default {
   algin-items: center;
   justify-content: center;
   padding: 20px;
-}
-
-.placement-controls {
-  margin-bottom: 15px;
-  display: flex;
-  gap: 10px;
-  background-color: #fff;
-  padding: 5px;
-  border-radius: 8px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-}
-
-.placement-controls button {
-  padding: 8px 16px;
-  border: 1px solid #ccc;
-  background-color: #f9f9f9;
-  cursor: pointer;
-  border-radius: 6px;
-  font-weight: 600;
-  transition: all 0.2s ease;
-  text-transform: capitalize;
-}
-
-.placement-controls button:hover {
-  background-color: #e9e9e9;
-  border-color: #aaa;
-}
-
-.placement-controls button.active {
-  background-color: #007bff;
-  color: white;
-  border-color: #007bff;
+  min-width: 0;
+  min-height: 0;
 }
 
 .sidebar-button {

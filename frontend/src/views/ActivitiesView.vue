@@ -31,6 +31,7 @@
 <script>
 import axios from "axios";
 import SpinnerComponent from "@/components/SpinnerComponent.vue";
+import API_BASE_URL from "@/apiConfig";
 
 export default {
   name: "ActivitiesView",
@@ -46,7 +47,7 @@ export default {
     this.productId = localStorage.getItem("selectedProductId");
 
     try {
-      const response = await axios.get("http://localhost:5000/api/activities", {
+      const response = await axios.get(`${API_BASE_URL}/api/activities`, {
         withCredentials: true,
       });
       this.activities = response.data;

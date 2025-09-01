@@ -45,7 +45,7 @@ export default {
 
   async created() {
     try {
-      const response = await axios.get("http://localhost:5000/api/orders", {
+      const response = await axios.get("${API_BASE_URL}/api/orders", {
         withCredentials: true,
       });
       this.orders = response.data;

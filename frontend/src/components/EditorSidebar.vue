@@ -1,7 +1,23 @@
 <template>
   <div class="editor-sidebar">
-    <h2>Design Elements</h2>
+    <div class="placement-controls-wrapper">
+      <h2>Placement</h2>
+      <div
+        class="placement-controls"
+        v-if="editorProductData && editorProductData.print_areas"
+      >
+        <button
+          v-for="(area, key) in editorProductData.print_areas"
+          :key="key"
+          @click="$emit('update:activePlacement', key)"
+          :class="{ active: activePlacement === key }"
+        >
+          {{ area.name || key }}
+        </button>
+      </div>
+    </div>
 
+    <h2>Design Elements</h2>
     <div
       :class="{ active: selection.type === 'map' }"
       class="element-box"
@@ -1197,6 +1213,8 @@ import { TILE_LAYERS } from "@/config/mapConfig.js";
 export default {
   name: "EditorSidebar",
   props: {
+    editorProductData: Object,
+    activePlacement: String,
     selection: { type: Object, required: true },
     activityData: Object,
     availableGraphSources: Array,
@@ -1215,6 +1233,7 @@ export default {
 
   emits: [
     "select-element",
+    "update:activePlacement",
     "update:mapSettings",
     "update:dataFields",
     "update:achievements",
@@ -1558,6 +1577,43 @@ export default {
 </script>
 
 <style scoped>
+.placement-controls-wrapper {
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.placement-controls {
+  display: flex;
+  gap: 10px;
+  background-color: #f0f2f5;
+  padding: 5px;
+  border-radius: 8px;
+}
+
+.placement-controls button {
+  flex-grow: 1;
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  background-color: #fff;
+  cursor: pointer;
+  border-radius: 6px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  text-transform: capitalize;
+}
+
+.placement-controls button:hover {
+  background-color: #e9e9e9;
+  border-color: #aaa;
+}
+
+.placement-controls button.active {
+  background-color: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
 .custom-link-wrapper {
   display: flex;
   gap: 8px;

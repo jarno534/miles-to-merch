@@ -39,6 +39,7 @@
 import axios from "axios";
 import { notifySuccess, notifyError } from "../notifications";
 import SpinnerComponent from "@/components/SpinnerComponent.vue";
+import API_BASE_URL from "@/apiConfig";
 
 export default {
   name: "MyDesignsView",
@@ -49,17 +50,21 @@ export default {
       loading: true,
     };
   },
+
   async created() {
     await this.fetchDesigns();
   },
+
   methods: {
     orderDesign(designId) {
       this.$router.push({ name: "Checkout", params: { designId: designId } });
     },
+
     async fetchDesigns() {
       this.loading = true;
       try {
-        const response = await axios.get("http://localhost:5000/api/designs", {
+        const response = await axios.get(`${API_BASE_URL}/api/designs`, {
+          // Correcte backticks
           withCredentials: true,
         });
         this.designs = response.data;
@@ -72,6 +77,7 @@ export default {
         this.loading = false;
       }
     },
+
     formatDate(dateString) {
       return new Date(dateString).toLocaleDateString("en-US", {
         year: "numeric",
@@ -81,9 +87,8 @@ export default {
         minute: "2-digit",
       });
     },
+
     editDesign(design) {
-      // Navigate to the design page to edit this specific design
-      // Note: We need to get the activityId and productId from the saved design data
       const activityId = design.design_data.activityId;
       const productId = design.product_id;
 
@@ -105,7 +110,7 @@ export default {
         return;
       }
       try {
-        await axios.delete(`http://localhost:5000/api/designs/${designId}`, {
+        await axios.delete(`${API_BASE_URL}/api/designs/${designId}`, {
           withCredentials: true,
         });
         notifySuccess("Design deleted successfully.");
@@ -118,11 +123,10 @@ export default {
     async editDesignName(design) {
       const newName = prompt("Enter a new name for your design:", design.name);
 
-      // Check if the user entered a new name and didn't just click cancel or leave it empty
       if (newName && newName.trim() !== "" && newName.trim() !== design.name) {
         try {
           const response = await axios.put(
-            `http://localhost:5000/api/designs/${design.id}`,
+            `${API_BASE_URL}/api/designs/${design.id}`,
             { name: newName.trim() }, // Send the new name in the request body
             { withCredentials: true }
           );

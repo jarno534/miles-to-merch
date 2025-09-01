@@ -63,6 +63,7 @@
 <script>
 import axios from "axios";
 import { notifyError } from "../notifications";
+import API_BASE_URL from "@/apiConfig";
 
 export default {
   name: "CheckoutView",
@@ -72,6 +73,7 @@ export default {
       required: true,
     },
   },
+
   data() {
     return {
       design: null,
@@ -81,6 +83,7 @@ export default {
       isPlacingOrder: false,
     };
   },
+
   computed: {
     isProfileComplete() {
       if (!this.user) return false;
@@ -93,40 +96,36 @@ export default {
       );
     },
   },
+
   async created() {
     try {
-      // Fetch all necessary data in parallel
       const [designRes, profileRes] = await Promise.all([
-        axios.get(`http://localhost:5000/api/designs/${this.designId}`, {
+        axios.get(`${API_BASE_URL}/api/designs/${this.designId}`, {
           withCredentials: true,
         }),
-        axios.get("http://localhost:5000/api/profile", {
-          withCredentials: true,
-        }),
+        axios.get(`${API_BASE_URL}/api/profile`, { withCredentials: true }), // Correcte backticks
       ]);
 
       this.design = designRes.data;
       this.user = profileRes.data;
 
-      // Now fetch the specific product for this design
-      const productsRes = await axios.get("http://localhost:5000/api/products");
-      this.product = productsRes.data.find(
-        (p) => p.id === this.design.product_id
-      );
+      // We hoeven de producten niet meer apart op te halen, want ze zitten nu in het design object!
+      this.product = this.design.product;
     } catch (error) {
       console.error("Error loading checkout data:", error);
-      this.$router.push("/my-designs"); // Redirect back if something fails
+      this.$router.push("/my-designs");
     } finally {
       this.loading = false;
     }
   },
+
   methods: {
     async placeOrder() {
       if (!this.isProfileComplete) return;
       this.isPlacingOrder = true;
       try {
         const response = await axios.post(
-          "http://localhost:5000/api/orders",
+          `${API_BASE_URL}/api/orders`, // Correcte backticks
           { design_id: this.design.id },
           { withCredentials: true }
         );

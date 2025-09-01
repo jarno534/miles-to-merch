@@ -27,6 +27,34 @@
           />
         </div>
 
+        <template v-if="isFinalizingAccount">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="password">Password</label>
+              <input
+                type="password"
+                id="password"
+                v-model="password"
+                placeholder="Choose a password"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label for="confirmPassword">Confirm Password</label>
+              <input
+                type="password"
+                id="confirmPassword"
+                v-model="confirmPassword"
+                placeholder="Confirm your password"
+                required
+              />
+            </div>
+          </div>
+          <p v-if="passwordMismatch" class="error-message">
+            Passwords do not match.
+          </p>
+        </template>
+
         <h2>Integrations</h2>
         <div class="form-group">
           <div v-if="user.has_strava_linked" class="strava-linked">
@@ -34,9 +62,7 @@
           </div>
           <div v-else>
             <p>Connect your Strava account to easily use your activities.</p>
-            <a
-              href="http://localhost:5000/auth/login/strava?next=profile"
-              class="strava-button"
+            <a :href="stravaLinkUrl" class="strava-button"
               >Link Strava Account</a
             >
           </div>
@@ -53,7 +79,7 @@
                 v-model="selectedUnits"
                 name="units"
               />
-              Metric (km, °C)
+              Metric
             </label>
             <label class="radio-label">
               <input
@@ -62,7 +88,7 @@
                 v-model="selectedUnits"
                 name="units"
               />
-              Imperial (miles, °F)
+              Imperial
             </label>
           </div>
         </div>
@@ -162,12 +188,16 @@ import axios from "axios";
 import { auth } from "../auth";
 import { notifySuccess, notifyError } from "../notifications";
 import SpinnerComponent from "@/components/SpinnerComponent.vue";
+import API_BASE_URL from "@/apiConfig";
 
 export default {
   name: "ProfileView",
   components: { SpinnerComponent },
   data() {
     return {
+      isFinalizingAccount: false,
+      password: "",
+      confirmPassword: "",
       user: {},
       settings: settings,
       loading: true,
@@ -179,6 +209,7 @@ export default {
       auth: auth,
     };
   },
+
   computed: {
     selectedUnits: {
       get() {
@@ -188,7 +219,21 @@ export default {
         settings.setUnits(value);
       },
     },
+
+    stravaLinkUrl() {
+      return `${API_BASE_URL}/auth/login/strava?next=profile`;
+    },
+
+    passwordMismatch() {
+      return (
+        this.isFinalizingAccount &&
+        this.password &&
+        this.confirmPassword &&
+        this.password !== this.confirmPassword
+      );
+    },
   },
+
   watch: {
     "auth.isAuthCheckComplete"(isComplete) {
       if (isComplete) {
@@ -196,11 +241,13 @@ export default {
       }
     },
   },
+
   created() {
     if (auth.isAuthCheckComplete) {
       this.handleAuthCheck();
     }
   },
+
   methods: {
     handleAuthCheck() {
       if (!auth.isLoggedIn) {
@@ -209,26 +256,44 @@ export default {
         this.fetchProfile();
       }
     },
+
     async fetchProfile() {
       this.loading = true;
       try {
-        const response = await axios.get("http://localhost:5000/api/profile", {
+        const response = await axios.get(`${API_BASE_URL}/api/profile`, {
           withCredentials: true,
         });
         this.user = response.data;
+        // NIEUW: Bepaal of dit een nieuw account is dat een wachtwoord nodig heeft
+        this.isFinalizingAccount = !this.user.email;
       } catch (error) {
         console.error("Failed to fetch profile:", error);
       } finally {
         this.loading = false;
       }
     },
+
     async updateProfile() {
+      if (this.isFinalizingAccount) {
+        if (!this.password || this.password !== this.confirmPassword) {
+          notifyError("Passwords do not match or are empty.");
+          return;
+        }
+      }
+
       this.isSaving = true;
       try {
-        await axios.put("http://localhost:5000/api/profile", this.user, {
+        const payload = { ...this.user };
+        if (this.isFinalizingAccount) {
+          payload.password = this.password;
+        }
+
+        await axios.put(`${API_BASE_URL}/api/profile`, payload, {
           withCredentials: true,
         });
+
         notifySuccess("Profile updated successfully!");
+        this.isFinalizingAccount = false; // Na succes is het account gefinaliseerd
         setTimeout(() => (this.successMessage = ""), 3000);
       } catch (error) {
         console.error("Failed to update profile:", error);
@@ -237,14 +302,17 @@ export default {
         this.isSaving = false;
       }
     },
+
     showDeleteModal() {
       this.isDeleteModalVisible = true;
       this.deleteError = null;
       this.passwordForDelete = "";
     },
+
     cancelDelete() {
       this.isDeleteModalVisible = false;
     },
+
     async confirmDelete() {
       this.deleteError = null;
       if (!this.passwordForDelete) {
@@ -253,7 +321,7 @@ export default {
       }
       try {
         await axios.post(
-          "http://localhost:5000/api/profile/delete",
+          `${API_BASE_URL}/api/profile/delete`,
           { password: this.passwordForDelete },
           { withCredentials: true }
         );

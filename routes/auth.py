@@ -1,5 +1,5 @@
 import requests
-from flask import Blueprint, redirect, request, session, jsonify, current_app
+from flask import Blueprint, redirect, request, session, jsonify, current_app, url_for
 from models import User
 from extensions import db
 from flask_login import login_user
@@ -86,6 +86,8 @@ def strava_login():
     next_url = request.args.get('next')
     if next_url:
         session['strava_redirect_next'] = next_url
+
+    redirect_uri = f"{current_app.config['BACKEND_URL']}{url_for('auth.strava_callback')}"
 
     auth_url = (
         f"http://www.strava.com/oauth/authorize?"
