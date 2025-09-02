@@ -47,6 +47,7 @@ class Product(db.Model):
     printful_product_id = db.Column(db.Integer, nullable=True)
     printful_variant_id = db.Column(db.Integer, nullable=True)
     designs = db.relationship('Design', backref='product', lazy=True)
+    merch_color_type = db.Column(db.String(10), default='light')
 
     def to_dict(self):
         parsed_areas = None
@@ -61,7 +62,8 @@ class Product(db.Model):
             'description': self.description,
             'price': self.price,
             'print_areas': parsed_areas,
-            'printful_product_id': self.printful_product_id
+            'printful_product_id': self.printful_product_id,
+            'merch_color_type': self.merch_color_type
         }
 
 class Design(db.Model):
@@ -73,7 +75,6 @@ class Design(db.Model):
     design_data = db.Column(db.JSON, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     name = db.Column(db.String(100), nullable=False, default="My Design")
-    merch_color_type = db.Column(db.String(10), default='light')
 
     def to_dict(self):
         product_info = self.product.to_dict() if self.product else None
