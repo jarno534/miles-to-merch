@@ -6,10 +6,7 @@ D:.
 ¦   app.py
 ¦   config.py
 ¦   extensions.py
-¦   mappenstructuur.txt
 ¦   models.py
-¦   output.txt
-¦   printful_data.json
 ¦   Procfile
 ¦   requirements.txt
 ¦   
