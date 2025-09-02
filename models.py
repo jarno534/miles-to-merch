@@ -50,18 +50,12 @@ class Product(db.Model):
     merch_color_type = db.Column(db.String(10), default='light')
 
     def to_dict(self):
-        parsed_areas = None
-        if self.print_areas:
-            try:
-                parsed_areas = json.loads(self.print_areas)
-            except (TypeError, json.JSONDecodeError):
-                parsed_areas = {}
         return {
             'id': self.id,
             'name': self.name,
             'description': self.description,
             'price': self.price,
-            'print_areas': self.print_areas or {},
+            'print_areas': self.print_areas or {}, # Dit is nu weer correct
             'printful_product_id': self.printful_product_id,
             'merch_color_type': self.merch_color_type
         }

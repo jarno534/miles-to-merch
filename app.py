@@ -71,7 +71,7 @@ def create_app(config_class=Config):
                 "merch_color_type": "dark",
                 "printful_product_id": 71,
                 "printful_variant_id": 4012,
-                "print_areas": json.dumps({
+                "print_areas": {
                     "front": {
                         "name": "Front",
                         "image_url": "/images/unisex-staple-t-shirt-black-heather-front.png",
@@ -86,7 +86,7 @@ def create_app(config_class=Config):
                         "mockup_width": 2000,
                         "mockup_height": 2000
                     }
-                })
+                }
             }
         ]
 
