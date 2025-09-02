@@ -489,6 +489,17 @@ export default {
   },
 
   methods: {
+    getInitialElementColor(type = "main") {
+      const isDark =
+        this.editorProductData &&
+        this.editorProductData.merch_color_type === "dark";
+      if (isDark) {
+        return type === "label" ? "#E0E0E0" : "#FFFFFF";
+      } else {
+        return type === "label" ? "#555555" : "#000000";
+      }
+    },
+
     handleBeforeUnload(event) {
       if (this.isDirty) {
         event.preventDefault();
@@ -1182,7 +1193,7 @@ export default {
           height: 80,
           fontFamily: "Arial",
           fontSize: 30,
-          fontColor: "#333333",
+          fontColor: this.getInitialElementColor(),
           textAlign: "center",
           isBold: false,
           isItalic: false,
@@ -1214,8 +1225,8 @@ export default {
           showLegend: false,
           yAxisTitle: "Heart Rate",
           xAxisTitle: "Distance",
-          showAltitudeInBackground: true,
-          transparentBg: false,
+          showAltitudeInBackground: false,
+          transparentBg: true,
           transparentFill: false,
           showXAxisTitle: true,
           showXAxisLabels: true,
@@ -1239,10 +1250,10 @@ export default {
           backgroundColor: "#ffffff",
           fontFamily: "Arial",
           fontSize: 24,
-          textColor: "#333333",
+          fontColor: this.getInitialElementColor(),
           borderRadius: 8,
           borderWidth: 0,
-          borderColor: "#333333",
+          borderColor: this.getInitialElementColor(),
         },
       };
       if (!defaults[type]) return;
@@ -1414,6 +1425,8 @@ export default {
 
       this.editorProductData = productRes.data;
       this.activityData = activityRes.data;
+      this.dataFields.labelColor = this.getInitialElementColor("label");
+      this.dataFields.valueColor = this.getInitialElementColor("main");
       this.activityPhotos = activityRes.data.photos || [];
 
       if (this.editorProductData.print_areas) {

@@ -68,6 +68,7 @@ def create_app(config_class=Config):
                 "name": "Unisex Staple T-Shirt | Bella + Canvas 3001",
                 "description": "Een comfortabel en stijlvol shirt, perfect voor elke gelegenheid.",
                 "price": 24.95,
+                "merch_color_type": "dark",
                 "printful_product_id": 71,
                 "printful_variant_id": 4012,
                 "print_areas": json.dumps({
