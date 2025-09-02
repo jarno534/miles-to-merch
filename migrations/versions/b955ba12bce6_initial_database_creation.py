@@ -1,8 +1,8 @@
 """Initial database creation
 
-Revision ID: 15219f464205
+Revision ID: b955ba12bce6
 Revises: 
-Create Date: 2025-08-30 01:46:50.839360
+Create Date: 2025-09-02 22:26:04.455000
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '15219f464205'
+revision = 'b955ba12bce6'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -22,11 +22,10 @@ def upgrade():
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('name', sa.String(length=100), nullable=False),
     sa.Column('description', sa.Text(), nullable=True),
-    sa.Column('image_url', sa.String(length=200), nullable=True),
     sa.Column('price', sa.Float(), nullable=False),
+    sa.Column('print_areas', sa.JSON(), nullable=True),
     sa.Column('printful_product_id', sa.Integer(), nullable=True),
-    sa.Column('editor_template_url_front', sa.String(length=512), nullable=True),
-    sa.Column('editor_template_url_back', sa.String(length=512), nullable=True),
+    sa.Column('printful_variant_id', sa.Integer(), nullable=True),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('user',
@@ -50,9 +49,12 @@ def upgrade():
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.Column('product_id', sa.Integer(), nullable=False),
+    sa.Column('variant_id', sa.Integer(), nullable=True),
+    sa.Column('preview_url', sa.String(length=255), nullable=True),
     sa.Column('design_data', sa.JSON(), nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=True),
     sa.Column('name', sa.String(length=100), nullable=False),
+    sa.Column('merch_color_type', sa.String(length=10), nullable=True),
     sa.ForeignKeyConstraint(['product_id'], ['product.id'], ),
     sa.ForeignKeyConstraint(['user_id'], ['user.id'], ),
     sa.PrimaryKeyConstraint('id')
