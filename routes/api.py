@@ -420,19 +420,30 @@ def create_order():
 def get_orders():
     """Fetches all orders for the logged-in user."""
     user = User.query.get(session['user_id'])
+    # Sorteer de bestellingen direct via de relatie
     orders = sorted(user.orders, key=lambda o: o.order_date, reverse=True)
     
     orders_data = []
     for order in orders:
-        design = Design.query.get(order.design_id)
-        product = Product.query.get(design.product_id)
         order_dict = order.to_dict()
-        order_dict['product_name'] = product.name
+        
+        # Gebruik de relaties, dit is veel efficiënter en veiliger
+        if order.design and order.design.product:
+            product = order.design.product
+            order_dict['product_name'] = product.name
+            
+            # Haal de afbeelding veilig op
+            image_url = None
+            if product.print_areas and isinstance(product.print_areas, dict) and product.print_areas:
+                # Gebruik 'front' als die bestaat, anders de eerste de beste
+                first_area_key = 'front' if 'front' in product.print_areas else list(product.print_areas.keys())[0]
+                image_url = product.print_areas[first_area_key].get('image_url')
+            
+            order_dict['product_image_url'] = image_url
 
-        if product.print_areas:
-            first_area_key = list(product.print_areas.keys())[0]
-            order_dict['product_image_url'] = product.print_areas[first_area_key]['image_url']
         else:
+            # Vangnet voor als een product of design niet gevonden wordt
+            order_dict['product_name'] = "Product Not Found"
             order_dict['product_image_url'] = None
 
         orders_data.append(order_dict)

@@ -55,7 +55,7 @@ class Product(db.Model):
             'name': self.name,
             'description': self.description,
             'price': self.price,
-            'print_areas': self.print_areas or {}, # Dit is nu weer correct
+            'print_areas': self.print_areas or {},
             'printful_product_id': self.printful_product_id,
             'merch_color_type': self.merch_color_type
         }
