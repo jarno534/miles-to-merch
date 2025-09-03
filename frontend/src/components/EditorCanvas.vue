@@ -429,24 +429,22 @@ export default {
 
     designAreaStyle() {
       if (!this.printAreaData) {
-        return { display: "none" }; // Verberg de canvas als er geen data is
+        return { display: "none" };
       }
 
       const {
-        width, // bv: 1200 (pixels van het printvlak)
-        height, // bv: 1600
-        top, // bv: 350
-        left, // bv: 400
-        mockup_width, // bv: 2000 (referentiegrootte van de T-shirt afbeelding)
-        mockup_height, // bv: 2000
+        width,
+        height,
+        top,
+        left,
+        mockup_width,
+        mockup_height,
       } = this.printAreaData;
 
-      // Voorkom fouten als de data incompleet is
       if (!width || !height || !mockup_width || !mockup_height) {
-        return { width: "45%", height: "60%" }; // Fallback
+        return { width: "45%", height: "60%" };
       }
 
-      // Bereken de positie en grootte als percentages
       const widthPercent = (width / mockup_width) * 100;
       const heightPercent = (height / mockup_height) * 100;
       const topPercent = (top / mockup_height) * 100;
@@ -457,7 +455,7 @@ export default {
         height: `${heightPercent}%`,
         top: `${topPercent}%`,
         left: `${leftPercent}%`,
-        transform: "none", // We gebruiken nu geen transform meer voor de positionering
+        transform: "none",
       };
     },
 
@@ -580,12 +578,11 @@ export default {
   },
 
   watch: {
-    // --- CONTROLE 2: LOGGEN WANNEER DE DATA BINNENKOMT ---
     printAreaData: {
       handler(newValue) {
         console.log("Prop 'printAreaData' is bijgewerkt:", newValue);
       },
-      immediate: true, // Log de waarde direct bij het laden
+      immediate: true,
       deep: true,
     },
 
