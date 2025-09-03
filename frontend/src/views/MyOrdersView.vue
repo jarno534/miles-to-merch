@@ -32,6 +32,7 @@
 <script>
 import axios from "axios";
 import SpinnerComponent from "@/components/SpinnerComponent.vue";
+import API_BASE_URL from "@/apiConfig";
 
 export default {
   name: "MyOrdersView",
@@ -45,7 +46,7 @@ export default {
 
   async created() {
     try {
-      const response = await axios.get("${API_BASE_URL}/api/orders", {
+      const response = await axios.get(`${API_BASE_URL}/api/orders`, {
         withCredentials: true,
       });
       this.orders = response.data;
