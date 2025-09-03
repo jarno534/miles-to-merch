@@ -134,6 +134,10 @@ export default {
 
       const { dataStream } = this.processedData;
 
+      const formattedLabel =
+        this.options.selectedDataSource.charAt(0).toUpperCase() +
+        this.options.selectedDataSource.slice(1).replace(/_/g, " ");
+
       const mainDataPoints = dataStream.map((value, index) => ({
         x: distanceStream[index],
         y: value,
@@ -166,7 +170,7 @@ export default {
       }
 
       datasets.push({
-        label: this.options.selectedDataSource,
+        label: formattedLabel,
         data: mainDataPoints,
         backgroundColor: this.options.transparentFill
           ? "transparent"
