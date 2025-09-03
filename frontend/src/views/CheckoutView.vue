@@ -16,6 +16,16 @@
             <p>Your custom design based on "{{ design.name }}"</p>
             <p class="price">€{{ product.price.toFixed(2) }}</p>
           </div>
+          <div class="quantity-selector">
+            <label for="quantity">Quantity:</label>
+            <input
+              type="number"
+              id="quantity"
+              v-model.number="quantity"
+              min="1"
+              max="100"
+            />
+          </div>
         </div>
         <div class="total-section">
           <span>Total:</span>
@@ -83,6 +93,7 @@ export default {
       loading: true,
       isPlacingOrder: false,
       stripePromise: null,
+      quantity: 1,
     };
   },
 
@@ -96,6 +107,11 @@ export default {
         this.user.shipping_zip &&
         this.user.shipping_country
       );
+    },
+
+    totalPrice() {
+      if (!this.product) return 0;
+      return this.product.price * this.quantity;
     },
   },
 
@@ -123,16 +139,16 @@ export default {
     async placeOrder() {
       if (!this.isProfileComplete || this.isPlacingOrder) return;
       this.isPlacingOrder = true;
-
       try {
         const response = await axios.post(
           `${API_BASE_URL}/api/create-checkout-session`,
-          { design_id: this.design.id },
+          {
+            design_id: this.design.id,
+            quantity: this.quantity,
+          },
           { withCredentials: true }
         );
-
         const sessionId = response.data.id;
-
         const stripe = await this.stripePromise;
         const { error } = await stripe.redirectToCheckout({
           sessionId: sessionId,
@@ -159,11 +175,13 @@ export default {
   margin: 40px auto;
   padding: 20px;
 }
+
 .checkout-container {
   display: grid;
   grid-template-columns: 1fr;
   gap: 30px;
 }
+
 .order-summary,
 .shipping-details {
   background: #fff;
@@ -171,35 +189,42 @@ export default {
   border-radius: 10px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
 }
+
 h1,
 h2 {
   text-align: left;
   margin-top: 0;
 }
+
 .product-item {
   display: flex;
   gap: 20px;
   border-bottom: 1px solid #eee;
   padding-bottom: 20px;
 }
+
 .product-thumbnail {
   width: 100px;
   height: 100px;
   object-fit: cover;
   border-radius: 8px;
 }
+
 .product-details h3 {
   margin: 0 0 5px;
 }
+
 .product-details p {
   margin: 0;
   color: #666;
 }
+
 .price {
   font-weight: bold;
   margin-top: 10px !important;
   color: #333 !important;
 }
+
 .total-section {
   display: flex;
   justify-content: space-between;
@@ -207,19 +232,23 @@ h2 {
   font-size: 1.2rem;
   margin-top: 20px;
 }
+
 .address-card {
   text-align: left;
   line-height: 1.6;
 }
+
 .address-card p {
   margin: 4px 0;
 }
+
 .edit-link {
   display: inline-block;
   margin-top: 10px;
   color: #007bff;
   font-weight: bold;
 }
+
 .address-incomplete {
   background-color: #fff3cd;
   color: #856404;
@@ -227,6 +256,7 @@ h2 {
   border-radius: 8px;
   border: 1px solid #ffeeba;
 }
+
 .cta-button {
   display: inline-block;
   margin-top: 15px;
@@ -237,9 +267,11 @@ h2 {
   text-decoration: none;
   font-weight: bold;
 }
+
 .payment-section {
   margin-top: 20px;
 }
+
 .place-order-button {
   width: 100%;
   padding: 18px;
@@ -254,5 +286,23 @@ h2 {
 .place-order-button:disabled {
   background-color: #ccc;
   cursor: not-allowed;
+}
+
+.quantity-selector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+.quantity-selector label {
+  font-size: 0.9em;
+  color: #666;
+}
+
+.quantity-selector input {
+  width: 60px;
+  text-align: center;
+  font-weight: bold;
 }
 </style>

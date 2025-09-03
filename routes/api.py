@@ -386,6 +386,7 @@ def create_checkout_session():
     """Creëert een Stripe Checkout sessie en geeft de ID terug."""
     data = request.get_json()
     design_id = data.get('design_id')
+    quantity = data.get('quantity', 1)
 
     if not design_id:
         return jsonify({'error': 'Design ID is required'}), 400
@@ -404,6 +405,7 @@ def create_checkout_session():
             payment_method_types=['card', 'bancontact'],
             line_items=[{
                 'price_data': {
+                    'quantity': quantity,
                     'currency': 'eur',
                     'product_data': {
                         'name': product.name,
@@ -418,7 +420,8 @@ def create_checkout_session():
             cancel_url=f"{frontend_url}/checkout/{design.id}",
             metadata={
                 'user_id': session['user_id'],
-                'design_id': design.id
+                'design_id': design.id,
+                'quantity': quantity
             }
         )
         return jsonify({'id': checkout_session.id})
@@ -448,6 +451,7 @@ def stripe_webhook():
         metadata = session_data.get('metadata', {})
         user_id = metadata.get('user_id')
         design_id = metadata.get('design_id')
+        quantity = int(metadata.get('quantity', 1))
 
         if not user_id or not design_id:
             print("Webhook Error: user_id or design_id missing in metadata")
@@ -471,7 +475,7 @@ def stripe_webhook():
         new_order = Order(
             user_id=user.id,
             design_id=design.id,
-            total_price=product.price,
+            total_price=product.price * quantity,
             shipping_name=shipping_details.get('name', user.name),
             shipping_address=address.get('line1'),
             shipping_city=address.get('city'),
@@ -488,6 +492,7 @@ def stripe_webhook():
             'Authorization': f'Bearer {printful_api_key}'
         }
         printful_payload = {
+            'confirm': False,
             'recipient': { 
                 'name': new_order.shipping_name, 
                 'address1': new_order.shipping_address, 
@@ -497,7 +502,7 @@ def stripe_webhook():
             },
             'items': [{
                 'variant_id': design.variant_id,
-                'quantity': 1,
+                'quantity': quantity,
                 'files': [{'url': design.preview_url}]
             }]
         }
