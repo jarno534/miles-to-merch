@@ -140,7 +140,7 @@ export default {
         textColor: "#333333",
         showIcon: true,
         backgroundColor: "#FFFFFF",
-        transparentBg: false,
+        transparentBg: true,
         borderRadius: 0,
       },
       achievements: [],
@@ -154,8 +154,8 @@ export default {
         zIndex: 10,
         fontSize: 14,
         textColor: "#333333",
-        backgroundColor: "rgba(255, 255, 255, 0.8)",
-        transparentBg: false,
+        backgroundColor: "#FFFFFF",
+        transparentBg: true,
         fontFamily: "Arial",
         borderEnabled: false,
         borderColor: "#333333",
@@ -175,8 +175,8 @@ export default {
         visible: true,
         x: 0,
         y: 0,
-        width: 540,
-        height: 525,
+        width: 300,
+        height: 300,
         zIndex: 1,
       },
       mapSettings: {
@@ -186,7 +186,7 @@ export default {
         style: "streets",
         visuals: "standard",
         fadeEdges: false,
-        showStartEndMarkers: false,
+        showStartEndMarkers: true,
         pitch: 45,
         bearing: 0,
       },
@@ -563,22 +563,18 @@ export default {
     },
 
     async handleSave(proceedToCheckout = false) {
-      // --- NIEUWE LOGICA VOOR NIET-INGELOGDE GEBRUIKERS ---
       if (!auth.isLoggedIn) {
         notifyInfo("Please create an account to save your design.");
-        // Sla het huidige design en de checkout-intentie op in localStorage
         localStorage.setItem("unsavedDesign", JSON.stringify(this.designState));
         localStorage.setItem("proceedToCheckout", proceedToCheckout);
 
-        // Stuur de gebruiker naar de registratiepagina met een redirect-query
         this.$router.push({
           name: "Register",
           query: { redirect: this.$route.fullPath },
         });
-        return; // Stop de functie hier
+        return;
       }
 
-      // --- BESTAANDE LOGICA VOOR INGELOGDE GEBRUIKERS ---
       const canvasElement = this.$refs.editorCanvas.getCanvasElement();
       if (!canvasElement) {
         notifyError("Could not find the design element to capture.");
@@ -693,11 +689,29 @@ export default {
         2: { description: "Partly cloudy", icon: "⛅️" },
         3: { description: "Overcast", icon: "☁️" },
         45: { description: "Fog", icon: "🌫️" },
+        48: { description: "Depositing rime fog", icon: "🌫️" },
         51: { description: "Light drizzle", icon: "🌦️" },
-        61: { description: "Slight rain", icon: "🌦️" },
+        53: { description: "Moderate drizzle", icon: "🌦️" },
+        55: { description: "Dense drizzle", icon: "🌦️" },
+        56: { description: "Light freezing drizzle", icon: "🥶" },
+        57: { description: "Dense freezing drizzle", icon: "🥶" },
+        61: { description: "Slight rain", icon: "🌧️" },
         63: { description: "Moderate rain", icon: "🌧️" },
+        65: { description: "Heavy rain", icon: "🌧️" },
+        66: { description: "Light freezing rain", icon: "🥶" },
+        67: { description: "Heavy freezing rain", icon: "🥶" },
+        71: { description: "Slight snow fall", icon: "🌨️" },
+        73: { description: "Moderate snow fall", icon: "🌨️" },
+        75: { description: "Heavy snow fall", icon: "🌨️" },
+        77: { description: "Snow grains", icon: "🌨️" },
         80: { description: "Slight rain showers", icon: "🌦️" },
+        81: { description: "Moderate rain showers", icon: "🌧️" },
+        82: { description: "Violent rain showers", icon: "🌧️" },
+        85: { description: "Slight snow showers", icon: "🌨️" },
+        86: { description: "Heavy snow showers", icon: "🌨️" },
         95: { description: "Thunderstorm", icon: "⛈️" },
+        96: { description: "Thunderstorm with hail", icon: "⛈️" },
+        99: { description: "Thunderstorm with heavy hail", icon: "⛈️" },
       };
       return codes[code] || { description: "Unknown", icon: "🤷" };
     },
@@ -1171,6 +1185,7 @@ export default {
           showY1AxisTitle: true,
           showY1AxisLabels: true,
           showGrid: true,
+          axisColor: this.getInitialElementColor("label"),
           showLegend: false,
           xAxisTicks: 10,
           yAxisTicks: 8,
@@ -1189,7 +1204,7 @@ export default {
           text: this.activityData?.details?.name || "Your Title Here",
           x: 0,
           y: 0,
-          width: 350,
+          width: 300,
           height: 80,
           fontFamily: "Arial",
           fontSize: 30,
@@ -1197,7 +1212,7 @@ export default {
           textAlign: "center",
           isBold: false,
           isItalic: false,
-          transparentBg: false,
+          transparentBg: true,
           backgroundColor: "#ffffff",
           borderRadius: 7,
         },
@@ -1250,7 +1265,7 @@ export default {
           backgroundColor: "#ffffff",
           fontFamily: "Arial",
           fontSize: 24,
-          fontColor: this.getInitialElementColor(),
+          textColor: this.getInitialElementColor(),
           borderRadius: 8,
           borderWidth: 0,
           borderColor: this.getInitialElementColor(),
@@ -1427,6 +1442,8 @@ export default {
       this.activityData = activityRes.data;
       this.dataFields.labelColor = this.getInitialElementColor("label");
       this.dataFields.valueColor = this.getInitialElementColor("main");
+      this.badgeListElement.textColor = this.getInitialElementColor("main");
+      this.weatherElement.textColor = this.getInitialElementColor("main");
       this.activityPhotos = activityRes.data.photos || [];
 
       if (this.editorProductData.print_areas) {

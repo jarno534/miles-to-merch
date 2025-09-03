@@ -257,8 +257,14 @@ def update_profile():
     user = User.query.get(session['user_id'])
     data = request.get_json()
 
+    new_email = data.get('email')
+    if new_email and new_email != user.email:
+        existing_user = User.query.filter(User.email == new_email, User.id != user.id).first()
+        if existing_user:
+            return jsonify({'error': 'Email address is already in use by another account.'}), 409
+        user.email = new_email
+
     user.name = data.get('name', user.name)
-    user.email = data.get('email', user.email)
     user.shipping_address = data.get('shipping_address', user.shipping_address)
     user.shipping_city = data.get('shipping_city', user.shipping_city)
     user.shipping_zip = data.get('shipping_zip', user.shipping_zip)
@@ -267,7 +273,13 @@ def update_profile():
     if 'password' in data and data['password']:
         user.set_password(data['password'])
 
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error updating profile: {e}")
+        return jsonify({'error': 'An internal error occurred while saving.'}), 500
+        
     return jsonify(user.to_dict())
 
 @api_bp.route('/profile/delete', methods=['POST'])

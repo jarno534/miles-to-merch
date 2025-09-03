@@ -408,6 +408,15 @@
               class="color-picker"
             />
           </div>
+          <div class="option-group">
+            <label>Axis & Grid Color:</label>
+            <input
+              type="color"
+              :value="selectedGraph.axisColor"
+              @input="updateGraphProperty('axisColor', $event.target.value)"
+              class="color-picker"
+            />
+          </div>
         </div>
 
         <div class="style-group">
@@ -452,6 +461,15 @@
             <label :for="`showAltitude-${selectedGraph.id}`"
               >Altitude in Background</label
             >
+          </div>
+          <div class="field-option">
+            <input
+              type="checkbox"
+              :id="`showLegend-${selectedGraph.id}`"
+              :checked="selectedGraph.showLegend"
+              @change="updateGraphProperty('showLegend', $event.target.checked)"
+            />
+            <label :for="`showLegend-${selectedGraph.id}`">Legend</label>
           </div>
         </div>
 
@@ -816,34 +834,102 @@
       @click="$emit('select-element', 'badgeList')"
     >
       <p>Activity Badges</p>
+
       <div
         v-if="selection.type === 'badgeList'"
         @click.stop
         class="badge-options"
       >
-        <div class="option-group">
-          <label>Font Family:</label>
-          <select
-            :value="badgeListElement.fontFamily"
-            @change="
-              $emit('update:badgeListElement', {
-                ...badgeListElement,
-                fontFamily: $event.target.value,
-              })
-            "
-          >
-            <option value="Arial">Arial</option>
-            <option value="Verdana">Verdana</option>
-            <option value="Georgia">Georgia</option>
-            <option value="'Courier New', Courier, monospace">
-              Courier New
-            </option>
-            <option value="'Times New Roman', Times, serif">
-              Times New Roman
-            </option>
-          </select>
+        <div class="style-group" style="text-align: left">
+          <label><b>Styling</b></label>
+
+          <div class="option-group">
+            <label>Font Family:</label>
+            <select
+              :value="badgeListElement.fontFamily"
+              @change="
+                $emit('update:badgeListElement', {
+                  ...badgeListElement,
+                  fontFamily: $event.target.value,
+                })
+              "
+            >
+              <option value="Arial">Arial</option>
+              <option value="Verdana">Verdana</option>
+              <option value="Georgia">Georgia</option>
+              <option value="'Courier New', Courier, monospace">
+                Courier New
+              </option>
+              <option value="'Times New Roman', Times, serif">
+                Times New Roman
+              </option>
+            </select>
+          </div>
+
+          <div class="option-group">
+            <label>Font Size:</label>
+            <input
+              type="range"
+              :value="badgeListElement.fontSize"
+              @input="
+                $emit('update:badgeListElement', {
+                  ...badgeListElement,
+                  fontSize: +$event.target.value,
+                })
+              "
+              min="8"
+              max="24"
+              class="range-slider"
+            />
+          </div>
+
+          <div class="option-group">
+            <label>Text Color:</label>
+            <input
+              type="color"
+              :value="badgeListElement.textColor"
+              @input="
+                $emit('update:badgeListElement', {
+                  ...badgeListElement,
+                  textColor: $event.target.value,
+                })
+              "
+              class="color-picker"
+            />
+          </div>
+
+          <div class="field-option">
+            <input
+              type="checkbox"
+              id="badgeTransparentBg"
+              :checked="badgeListElement.transparentBg"
+              @change="
+                $emit('update:badgeListElement', {
+                  ...badgeListElement,
+                  transparentBg: $event.target.checked,
+                })
+              "
+            />
+            <label for="badgeTransparentBg">Transparent Background</label>
+          </div>
+
+          <div v-if="!badgeListElement.transparentBg" class="option-group">
+            <label>Background Color:</label>
+            <input
+              type="color"
+              :value="badgeListElement.backgroundColor"
+              @input="
+                $emit('update:badgeListElement', {
+                  ...badgeListElement,
+                  backgroundColor: $event.target.value,
+                })
+              "
+              class="color-picker"
+            />
+          </div>
         </div>
-        <div class="category-group">
+
+        <div class="category-group" style="text-align: left; margin-top: 20px">
           <p class="category-title">Select & Reorder Badges</p>
           <div class="achievement-list-sidebar" @dragleave="handleBadgeDragEnd">
             <div
@@ -1142,7 +1228,7 @@
         </div>
 
         <div class="option-group">
-          <label>Font Size: {{ weatherElement.fontSize }}px</label>
+          <label>Font Size:</label>
           <input
             type="range"
             :value="weatherElement.fontSize"

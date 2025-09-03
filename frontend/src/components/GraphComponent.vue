@@ -132,7 +132,7 @@ export default {
         this.activityData.streams.distance?.data || []
       ).map((d) => d * distConversionFacter);
 
-      const { dataStream, yAxisLabel } = this.processedData;
+      const { dataStream } = this.processedData;
 
       const mainDataPoints = dataStream.map((value, index) => ({
         x: distanceStream[index],
@@ -166,7 +166,7 @@ export default {
       }
 
       datasets.push({
-        label: yAxisLabel,
+        label: this.options.selectedDataSource,
         data: mainDataPoints,
         backgroundColor: this.options.transparentFill
           ? "transparent"
@@ -194,20 +194,26 @@ export default {
       const distanceStream = this.activityData.streams.distance?.data || [0];
       const maxDistance =
         (distanceStream[distanceStream.length - 1] || 0) * distConversionFacter;
+      const axisAndGridColor = this.options.axisColor || "#5555555";
 
       const yAxisOptions = {
         reverse: yAxisReverse,
         display: this.options.showYAxisTitle || this.options.showYAxisLabels,
-        grid: { display: this.options.showGrid },
+        grid: {
+          display: this.options.showGrid,
+          color: axisAndGridColor,
+        },
         ticks: {
           display: this.options.showYAxisLabels,
           maxTicksLimit: this.options.yAxisTicks,
+          color: axisAndGridColor,
           font: { size: this.options.tickFontSize },
           callback: yTickFormatter,
         },
         title: {
           display: this.options.showYAxisTitle,
           text: yAxisLabel,
+          color: axisAndGridColor,
           font: { size: this.options.titleFontSize },
         },
       };
@@ -234,10 +240,14 @@ export default {
             display:
               this.options.showXAxisLabels || this.options.showXAxisTitle,
             max: maxDistance,
-            grid: { display: this.options.showGrid },
+            grid: {
+              display: this.options.showGrid,
+              color: axisAndGridColor,
+            },
             ticks: {
               display: this.options.showXAxisLabels,
               maxTicksLimit: this.options.xAxisTicks,
+              color: axisAndGridColor,
               font: { size: this.options.tickFontSize },
               callback: function (value) {
                 if (value % 1 === 0) {
@@ -249,6 +259,7 @@ export default {
             title: {
               display: this.options.showXAxisTitle,
               text: `Distance (${isImperial ? "mi" : "km"})`,
+              color: axisAndGridColor,
             },
           },
           y: yAxisOptions,
@@ -262,6 +273,7 @@ export default {
             ticks: {
               display: this.options.showY1AxisLabels,
               maxTicksLimit: 5,
+              color: axisAndGridColor,
               font: {
                 size: this.options.tickFontSize
                   ? this.options.tickFontSize - 2
@@ -270,19 +282,25 @@ export default {
             },
             title: {
               display: this.options.showY1AxisTitle,
-              text: `Altitude (${isImperial ? "ft" : "m"})`, // Dynamisch label
+              text: `Altitude (${isImperial ? "ft" : "m"})`,
+              color: axisAndGridColor,
               font: { size: this.options.titleFontSize },
             },
           },
         },
         plugins: {
-          legend: { display: false },
-          title: {
+          legend: {
             display: this.options.showLegend,
-            text: yAxisLabel,
             position: "top",
             align: "end",
-            padding: { bottom: 10 },
+            labels: {
+              color: axisAndGridColor,
+              boxWidth: 15,
+              padding: 20,
+              font: {
+                size: this.options.titleFontSize,
+              },
+            },
           },
           tooltip: { enabled: false },
         },
