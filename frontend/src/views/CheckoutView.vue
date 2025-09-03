@@ -64,6 +64,7 @@
 import axios from "axios";
 import { notifyError } from "../notifications";
 import API_BASE_URL from "@/apiConfig";
+import { loadStripe } from "@stripe/stripe-js";
 
 export default {
   name: "CheckoutView",
@@ -81,6 +82,7 @@ export default {
       user: null,
       loading: true,
       isPlacingOrder: false,
+      stripePromise: null,
     };
   },
 
@@ -98,18 +100,16 @@ export default {
   },
 
   async created() {
+    this.stripePromise = loadStripe(process.env.VUE_APP_STRIPE_PUBLISHABLE_KEY);
     try {
       const [designRes, profileRes] = await Promise.all([
         axios.get(`${API_BASE_URL}/api/designs/${this.designId}`, {
           withCredentials: true,
         }),
-        axios.get(`${API_BASE_URL}/api/profile`, { withCredentials: true }), // Correcte backticks
+        axios.get(`${API_BASE_URL}/api/profile`, { withCredentials: true }),
       ]);
-
       this.design = designRes.data;
       this.user = profileRes.data;
-
-      // We hoeven de producten niet meer apart op te halen, want ze zitten nu in het design object!
       this.product = this.design.product;
     } catch (error) {
       console.error("Error loading checkout data:", error);
@@ -121,25 +121,30 @@ export default {
 
   methods: {
     async placeOrder() {
-      if (!this.isProfileComplete) return;
+      if (!this.isProfileComplete || this.isPlacingOrder) return;
       this.isPlacingOrder = true;
+
       try {
         const response = await axios.post(
-          `${API_BASE_URL}/api/orders`, // Correcte backticks
+          `${API_BASE_URL}/api/create-checkout-session`,
           { design_id: this.design.id },
           { withCredentials: true }
         );
-        const newOrder = response.data;
-        this.$router.push({
-          name: "OrderConfirmation",
-          params: { orderId: newOrder.id },
+
+        const sessionId = response.data.id;
+
+        const stripe = await this.stripePromise;
+        const { error } = await stripe.redirectToCheckout({
+          sessionId: sessionId,
         });
+
+        if (error) {
+          console.error("Stripe redirect error:", error.message);
+          notifyError(error.message);
+        }
       } catch (error) {
-        console.error("Error placing order:", error);
-        notifyError(
-          error.response?.data?.error ||
-            "Could not place the order. Please try again."
-        );
+        console.error("Error creating checkout session:", error);
+        notifyError("Could not initiate payment. Please try again.");
       } finally {
         this.isPlacingOrder = false;
       }

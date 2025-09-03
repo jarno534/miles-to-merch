@@ -14,9 +14,16 @@ class Config:
     # Printful API Settings
     PRINTFUL_API_KEY = os.environ.get('PRINTFUL_API_KEY')
 
+    # Frontend & Backend URLs
     FRONTEND_URL = os.environ.get('FRONTEND_URL') or 'http://localhost:8081'
     BACKEND_URL = os.environ.get('BACKEND_URL') or 'http://localhost:5000'
 
+    # Session Cookie Settings
     SESSION_COOKIE_SAMESITE = os.environ.get('SESSION_COOKIE_SAMESITE')
     SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', 'False').lower() in ('true', '1', 't')
     SESSION_COOKIE_DOMAIN = os.environ.get('SESSION_COOKIE_DOMAIN')
+
+    # Stripe
+    STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY')
+    STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY')
+    STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET')

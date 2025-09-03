@@ -12,13 +12,10 @@
         <div class="order-info">
           <h3>{{ order.product_name }}</h3>
           <p>Design: "{{ order.design_name || "My Design" }}"</p>
-          <p>
-            Order #{{ order.id }} - Placed on {{ formatDate(order.order_date) }}
-          </p>
+          <p>Order placed on {{ formatDate(order.order_date) }}</p>
         </div>
         <div class="order-details">
           <p class="price">€{{ order.total_price.toFixed(2) }}</p>
-          <span class="status">{{ order.order_status }}</span>
         </div>
       </div>
     </div>

@@ -59,8 +59,8 @@ export default {
   name: "OrderConfirmationView",
   components: { SpinnerComponent },
   props: {
-    orderId: {
-      type: [String, Number],
+    sessionId: {
+      type: String,
       required: true,
     },
   },
@@ -73,7 +73,7 @@ export default {
   async created() {
     try {
       const response = await axios.get(
-        `${API_BASE_URL}/api/orders/${this.orderId}`,
+        `${API_BASE_URL}/api/order-by-session/${this.sessionId}`,
         {
           withCredentials: true,
         }

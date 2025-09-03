@@ -8,6 +8,7 @@ from extensions import db
 import base64
 import os
 from uuid import uuid4
+import stripe
 
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 
@@ -324,97 +325,6 @@ def get_athlete_stats(athlete_id):
         return jsonify({'error': f'Failed to fetch Strava athlete stats: {e}'}), 500
 
 # --- Order Routes ---
-@api_bp.route('/orders', methods=['POST'])
-@login_required
-def create_order():
-    data = request.get_json()
-    design_id = data.get('design_id')
-
-    if not design_id:
-        return jsonify({'error': 'Design ID is required'}), 400
-
-    user = User.query.get(session['user_id'])
-    design = Design.query.get(design_id)
-    product = Product.query.get(design.product_id)
-
-    if not design or design.user_id != user.id:
-        return jsonify({'error': 'Design not found or not owned by user'}), 404
-    
-    if hasattr(design, 'order') and design.order:
-        return jsonify({'error': 'This design has already been ordered'}), 409
-
-    if not all([user.name, user.shipping_address, user.shipping_city, user.shipping_zip, user.shipping_country]):
-        return jsonify({'error': 'User profile is incomplete'}), 400
-
-    product = Product.query.get(design.product_id)
-    if not product:
-         return jsonify({'error': 'Product associated with design not found'}), 404
-
-    printful_api_key = current_app.config.get('PRINTFUL_API_KEY')
-    if not printful_api_key:
-        return jsonify({'error': 'Printful API key is not configured on the server.'}), 500
-
-    # --- TIJDELIJKE DEBUG STAP: Hardcode de Store ID ---
-    printful_store_id = '16718510'
-    print(f"DEBUG: Gebruik van hardcoded Printful Store ID: {printful_store_id}")
-    # --- EINDE TIJDELIJKE STAP ---
-
-    headers = {
-        'Authorization': f'Bearer {printful_api_key}',
-        'X-PF-Store-Id': printful_store_id
-    }
-
-    design_image_url = design.preview_url
-    if not design_image_url:
-        return jsonify({'error': 'Design has no preview image URL.'}), 400
-
-    printful_payload = {
-        'recipient': {
-            'name': user.name,
-            'address1': user.shipping_address,
-            'city': user.shipping_city,
-            'zip': user.shipping_zip,
-            'country_code': 'BE'
-        },
-        'items': [
-            {
-                'variant_id': design.variant_id,
-                'quantity': 1,
-                'files': [
-                    {
-                        'type': 'default',
-                        'url': design_image_url
-                    }
-                ]
-            }
-        ]
-    }
-
-    try:
-        response = requests.post('https://api.printful.com/orders', headers=headers, json=printful_payload)
-        response.raise_for_status()
-        printful_order = response.json()
-    except requests.exceptions.RequestException as e:
-        print(f"Printful API Error: {e.response.text}")
-        return jsonify({'error': 'Failed to submit order to Printful.'}), 502
-
-    new_order = Order(
-        user_id=user.id,
-        design_id=design.id,
-        total_price=product.price,
-        shipping_name=user.name,
-        shipping_address=user.shipping_address,
-        shipping_city=user.shipping_city,
-        shipping_zip=user.shipping_zip,
-        shipping_country=user.shipping_country,
-        order_status='Submitted to Printful'
-    )
-
-    db.session.add(new_order)
-    db.session.commit()
-
-    return jsonify(new_order.to_dict()), 201
-
 @api_bp.route('/orders', methods=['GET'])
 @login_required
 def get_orders():
@@ -469,46 +379,160 @@ def get_single_order(order_id):
 
     return jsonify(order_data)
 
-@api_bp.route('/debug-config')
-def debug_config():
-    print("\n--- STARTING FLASK CONFIGURATION DEBUG ---")
+# --- Checkout Route ---
+@api_bp.route('/create-checkout-session', methods=['POST'])
+@login_required
+def create_checkout_session():
+    """Creëert een Stripe Checkout sessie en geeft de ID terug."""
+    data = request.get_json()
+    design_id = data.get('design_id')
 
-    # We sorteren de sleutels voor een overzichtelijke output
-    config_keys = sorted(current_app.config.keys())
+    if not design_id:
+        return jsonify({'error': 'Design ID is required'}), 400
 
-    for key in config_keys:
-        # We printen elke sleutel en zijn waarde
-        print(f"  {key} = {current_app.config[key]}")
+    design = Design.query.get_or_404(design_id)
+    if not design.product:
+        return jsonify({'error': 'Product not found for this design'}), 404
 
-    print("--- EINDE VAN CONFIGURATIE ---")
+    product = design.product
 
-    return jsonify({
-        "message": "Configuration has been printed to your Flask server terminal.",
-        "keys_found": len(config_keys)
-    })
+    stripe.api_key = current_app.config['STRIPE_SECRET_KEY']
+    frontend_url = current_app.config['FRONTEND_URL']
 
-# In routes/api.py, vervang de oude debug-functie
-
-@api_bp.route('/debug-cors-check')
-def debug_cors_check():
-    """
-    Een stabiele route om de CORS en Sessie-instellingen 
-    van de live server te controleren.
-    """
     try:
-        # Haal de CORS-configuratie op een veiligere manier op
-        cors_origins = current_app.config.get('CORS_ORIGINS', 'Niet gevonden')
-        
-        config_data = {
-            "message": "Live server configuration check",
-            "CORS_origins_being_used": cors_origins,
-            "Expected_FRONTEND_URL": current_app.config.get('FRONTEND_URL'),
-            "SESSION_COOKIE_SAMESITE": current_app.config.get('SESSION_COOKIE_SAMESITE'),
-            "SESSION_COOKIE_SECURE": current_app.config.get('SESSION_COOKIE_SECURE'),
-            "SESSION_COOKIE_DOMAIN": current_app.config.get('SESSION_COOKIE_DOMAIN'),
-            "BACKEND_URL": current_app.config.get('BACKEND_URL')
-        }
-        return jsonify(config_data)
+        checkout_session = stripe.checkout.Session.create(
+            payment_method_types=['card', 'bancontact'],
+            line_items=[{
+                'price_data': {
+                    'currency': 'eur',
+                    'product_data': {
+                        'name': product.name,
+                        'description': f'Custom design: "{design.name}"',
+                    },
+                    'unit_amount': int(product.price * 100),
+                },
+                'quantity': 1,
+            }],
+            mode='payment',
+            success_url=f"{frontend_url}/order/confirmation/{{CHECKOUT_SESSION_ID}}",
+            cancel_url=f"{frontend_url}/checkout/{design.id}",
+            metadata={
+                'user_id': session['user_id'],
+                'design_id': design.id
+            }
+        )
+        return jsonify({'id': checkout_session.id})
+
     except Exception as e:
-        # Als er toch iets misgaat, geef een duidelijke foutmelding terug
-        return jsonify({"error": "Kon configuratie niet lezen", "details": str(e)}), 500
+        print(f"Stripe Error: {e}")
+        return jsonify({'error': 'Could not create payment session.'}), 500
+
+@api_bp.route('/stripe-webhook', methods=['POST'])
+def stripe_webhook():
+    payload = request.data
+    sig_header = request.headers.get('Stripe-Signature')
+    endpoint_secret = current_app.config['STRIPE_WEBHOOK_SECRET']
+    event = None
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, endpoint_secret
+        )
+    except ValueError as e:
+        return jsonify(status='invalid payload'), 400
+    except stripe.error.SignatureVerificationError as e:
+        return jsonify(status='invalid signature'), 400
+
+    if event['type'] == 'checkout.session.completed':
+        session_data = event['data']['object']
+        metadata = session_data.get('metadata', {})
+        user_id = metadata.get('user_id')
+        design_id = metadata.get('design_id')
+
+        if not user_id or not design_id:
+            print("Webhook Error: user_id or design_id missing in metadata")
+            return jsonify(status='error', reason='missing metadata'), 400
+
+        user = User.query.get(user_id)
+        design = Design.query.get(design_id)
+        product = design.product
+
+        if not all([user, design, product]):
+            print("Webhook Error: User, design, or product not found")
+            return jsonify(status='error', reason='data not found'), 400
+
+        shipping_details = session_data.get('shipping_details')
+        if not shipping_details or not shipping_details.get('address'):
+             print(f"Webhook Error: Shipping details missing from Stripe session {session_data.get('id')}")
+             return jsonify(status='error', reason='shipping details missing'), 400
+        
+        address = shipping_details.get('address', {})
+
+        new_order = Order(
+            user_id=user.id,
+            design_id=design.id,
+            total_price=product.price,
+            shipping_name=shipping_details.get('name', user.name),
+            shipping_address=address.get('line1'),
+            shipping_city=address.get('city'),
+            shipping_zip=address.get('postal_code'),
+            shipping_country=address.get('country'),
+            order_status='Paid',
+            stripe_session_id=session_data.get('id')
+        )
+        db.session.add(new_order)
+        db.session.commit()
+ 
+        printful_api_key = current_app.config['PRINTFUL_API_KEY']
+        headers = {
+            'Authorization': f'Bearer {printful_api_key}'
+        }
+        printful_payload = {
+            'recipient': { 
+                'name': new_order.shipping_name, 
+                'address1': new_order.shipping_address, 
+                'city': new_order.shipping_city, 
+                'zip': new_order.shipping_zip, 
+                'country_code': new_order.shipping_country
+            },
+            'items': [{
+                'variant_id': design.variant_id,
+                'quantity': 1,
+                'files': [{'url': design.preview_url}]
+            }]
+        }
+
+        try:
+            store_id = current_app.config.get('PRINTFUL_STORE_ID')
+            response = requests.post(f'https://api.printful.com/stores/{store_id}/orders', headers=headers, json=printful_payload)
+            response.raise_for_status()
+            printful_order_data = response.json().get('result', {})
+
+            new_order.printful_order_id = printful_order_data.get('id')
+            new_order.printful_order_status = printful_order_data.get('status')
+            new_order.order_status = 'Submitted to Printful'
+            db.session.commit()
+            print("Successfully submitted order to Printful.")
+
+        except requests.exceptions.RequestException as e:
+            print(f"Printful API Error after payment: {e}")
+            new_order.order_status = 'Payment successful, Printful submission failed'
+            db.session.commit()
+
+    return jsonify(status='success'), 200
+
+@api_bp.route('/order-by-session/<session_id>')
+@login_required
+def get_order_by_session_id(session_id):
+    order = Order.query.filter_by(stripe_session_id=session_id, user_id=session['user_id']).first_or_404()
+
+    order_data = order.to_dict()
+    if order.design and order.design.product:
+        product = order.design.product
+        image_url = None
+        if product.print_areas and isinstance(product.print_areas, dict) and product.print_areas:
+            first_area_key = 'front' if 'front' in product.print_areas else list(product.print_areas.keys())[0]
+            image_url = product.print_areas[first_area_key].get('image_url')
+        order_data['product_image_url'] = image_url
+
+    return jsonify(order_data)

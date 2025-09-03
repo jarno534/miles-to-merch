@@ -62,7 +62,7 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
-    path: "/order-confirmation/:orderId",
+    path: "/order-confirmation/:sessionId",
     name: "OrderConfirmation",
     component: () => import("../views/OrderConfirmationView.vue"),
     props: true,
@@ -81,20 +81,14 @@ const router = createRouter({
   routes,
 });
 
-// --- NAVIGATION GUARD ---
-// Deze functie wordt voor elke navigatie uitgevoerd
 router.beforeEach(async (to, from, next) => {
-  // Zorg ervoor dat de authenticatie-check is voltooid
   if (!auth.isAuthCheckComplete) {
     await auth.checkAuthStatus();
   }
 
-  // Controleer of de route authenticatie vereist en of de gebruiker niet is ingelogd
   if (to.meta.requiresAuth && !auth.isLoggedIn) {
-    // Stuur de gebruiker door naar de login-pagina
     next({ name: "Login", query: { redirect: to.fullPath } });
   } else {
-    // Anders, ga gewoon door naar de gevraagde route
     next();
   }
 });
