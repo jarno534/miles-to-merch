@@ -405,7 +405,6 @@ def create_checkout_session():
             payment_method_types=['card', 'bancontact'],
             line_items=[{
                 'price_data': {
-                    'quantity': quantity,
                     'currency': 'eur',
                     'product_data': {
                         'name': product.name,
@@ -413,7 +412,7 @@ def create_checkout_session():
                     },
                     'unit_amount': int(product.price * 100),
                 },
-                'quantity': 1,
+                'quantity': quantity,
             }],
             mode='payment',
             success_url=f"{frontend_url}/order/confirmation/{{CHECKOUT_SESSION_ID}}",
