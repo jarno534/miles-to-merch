@@ -29,7 +29,7 @@
         </div>
         <div class="total-section">
           <span>Total:</span>
-          <span class="total-price">€{{ product.price.toFixed(2) }}</span>
+          <span class="total-price">€{{ totalPrice.toFixed(2) }}</span>
         </div>
       </div>
 

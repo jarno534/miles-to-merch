@@ -40,24 +40,59 @@ class User(db.Model):
 
 class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
+    name = db.Column(db.String(100), nullable=False) # Bv. "Unisex Staple T-Shirt | Bella + Canvas 3001"
     description = db.Column(db.Text, nullable=True)
-    price = db.Column(db.Float, nullable=False)
-    print_areas = db.Column(db.JSON, nullable=True)
-    printful_product_id = db.Column(db.Integer, nullable=True)
-    printful_variant_id = db.Column(db.Integer, nullable=True)
-    designs = db.relationship('Design', backref='product', lazy=True)
-    merch_color_type = db.Column(db.String(10), default='light')
+    printful_product_id = db.Column(db.Integer, unique=True, nullable=False)
+    
+    # Relatie naar alle varianten van dit product
+    variants = db.relationship('Variant', backref='product', lazy='dynamic', cascade="all, delete-orphan")
 
     def to_dict(self):
         return {
             'id': self.id,
             'name': self.name,
             'description': self.description,
-            'price': self.price,
-            'print_areas': self.print_areas or {},
             'printful_product_id': self.printful_product_id,
-            'merch_color_type': self.merch_color_type
+            # We sturen nu de actieve varianten mee
+            'variants': [v.to_dict() for v in self.variants.filter_by(is_active=True).all()]
+        }
+
+class Variant(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
+    
+    # Unieke ID's van Printful
+    printful_variant_id = db.Column(db.Integer, unique=True, nullable=False)
+    
+    # Producteigenschappen
+    color = db.Column(db.String(50), nullable=False)
+    size = db.Column(db.String(10), nullable=False)
+    price = db.Column(db.Float, nullable=False)
+    
+    # Eigenschappen voor de designer
+    merch_color_type = db.Column(db.String(10), nullable=False) # 'light' of 'dark'
+    print_areas = db.Column(db.JSON, nullable=False)
+    
+    # Nieuwe velden voor beschikbaarheid en curatie
+    available_regions = db.Column(db.JSON, nullable=False) # Slaat een lijst op, bv. ["USA", "EUR"]
+    is_active = db.Column(db.Boolean, default=False, nullable=False) # Jij bepaalt of deze te koop is
+
+    def to_dict(self):
+        # Haal de eerste mockup afbeelding voor deze variant op
+        mockup_url = None
+        if self.print_areas and 'front' in self.print_areas:
+            mockup_url = self.print_areas['front'].get('image_url')
+
+        return {
+            'id': self.id,
+            'printful_variant_id': self.printful_variant_id,
+            'product_name': self.product.name, # Voeg de algemene productnaam toe
+            'color': self.color,
+            'size': self.size,
+            'price': self.price,
+            'merch_color_type': self.merch_color_type,
+            'mockup_url': mockup_url,
+            'print_areas': self.print_areas
         }
 
 class Design(db.Model):
