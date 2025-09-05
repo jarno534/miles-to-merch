@@ -40,7 +40,7 @@ export default {
       this.error = null;
       try {
         const response = await axios.post(
-          "${API_BASE_URL}/auth/login",
+          `${API_BASE_URL}/auth/login`,
           {
             email: this.email,
             password: this.password,
