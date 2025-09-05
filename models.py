@@ -104,6 +104,7 @@ class Design(db.Model):
     design_data = db.Column(db.JSON, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     name = db.Column(db.String(100), nullable=False, default="My Design")
+    product = db.relationship('Product')
 
     def to_dict(self):
         product_info = self.product.to_dict() if self.product else None
