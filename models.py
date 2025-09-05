@@ -18,6 +18,7 @@ class User(db.Model):
     access_token = db.Column(db.String(128), nullable=True)
     refresh_token = db.Column(db.String(128), nullable=True)
     expires_at = db.Column(db.Integer, nullable=True)
+    is_admin = db.Column(db.Boolean, default=False, nullable=False)
     designs = db.relationship('Design', backref='user', lazy=True, cascade="all, delete-orphan")
 
     def set_password(self, password):
