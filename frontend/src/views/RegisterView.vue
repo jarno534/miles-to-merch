@@ -24,6 +24,7 @@
 <script>
 import axios from "axios";
 import { auth } from "../auth";
+import API_BASE_URL from "@/apiConfig";
 
 export default {
   name: "RegisterView",
