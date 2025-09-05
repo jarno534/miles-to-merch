@@ -8,8 +8,8 @@ from flask_migrate import Migrate
 import os
 import click
 import requests
-from routes.admin import admin_bp
 from extensions import db, cors
+from admin import setup_admin
 
 load_dotenv()
 migrate = Migrate()
@@ -32,9 +32,10 @@ def create_app(config_class=Config):
         supports_credentials=True
     )
 
+    setup_admin(app)
+
     app.register_blueprint(auth_bp)
     app.register_blueprint(api_bp)
-    app.register_blueprint(admin_bp)
 
     @app.route('/')
     def index():
