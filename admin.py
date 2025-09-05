@@ -14,7 +14,7 @@ class SecuredModelView(ModelView):
         if 'user_id' in session:
             user = User.query.get(session['user_id'])
             # BELANGRIJK: Vervang dit door JOUW admin e-mailadres
-            if user and user.email == 'jouw-admin-email@voorbeeld.com':
+            if user and user.email == 'jarno.blomme@telenet.be':
                 return True
         return False
 
