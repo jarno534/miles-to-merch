@@ -40,11 +40,11 @@ class User(db.Model):
 
 class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False) # Bv. "Unisex Staple T-Shirt | Bella + Canvas 3001"
+    name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=True)
     printful_product_id = db.Column(db.Integer, unique=True, nullable=False)
-    
-    # Relatie naar alle varianten van dit product
+    base_price = db.Column(db.Float, nullable=False, default=0.0)
+    additional_price_per_area = db.Column(db.Float, nullable=False, default=0.0)
     variants = db.relationship('Variant', backref='product', lazy='dynamic', cascade="all, delete-orphan")
 
     def to_dict(self):
@@ -53,7 +53,6 @@ class Product(db.Model):
             'name': self.name,
             'description': self.description,
             'printful_product_id': self.printful_product_id,
-            # We sturen nu de actieve varianten mee
             'variants': [v.to_dict() for v in self.variants.filter_by(is_active=True).all()]
         }
 
