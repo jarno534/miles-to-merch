@@ -112,19 +112,18 @@ def sync_printful_command():
         response = requests.get('https://api.printful.com/product-templates', headers=headers)
         response.raise_for_status()
         
-        # --- DE CORRECTIE: Haal de 'items' lijst uit het 'result' object ---
         templates_data = response.json().get('result', {})
         templates = templates_data.get('items', [])
         
         print(f"{len(templates)} product-templates gevonden.")
 
         if not templates:
-            print("Geen templates gevonden om te synchroniseren. Maak eerst een template aan in je Printful dashboard.")
+            print("Geen templates gevonden. Maak eerst een template aan in je Printful dashboard.")
             return
 
         for template in templates:
             template_product_id = template.get('product_id')
-            template_product_name = template.get('title')
+            template_product_name = template.get('title') or "Unnamed Product"
             
             print(f"\nVerwerken van template: {template_product_name} (Product ID: {template_product_id})")
 
@@ -136,15 +135,17 @@ def sync_printful_command():
             db_product = Product.query.filter_by(printful_product_id=template_product_id).first()
             if not db_product:
                 db_product = Product(
-                    name=product_details.get('title'),
+                    name=product_details.get('title', template_product_name),
                     description=product_details.get('description'),
                     printful_product_id=template_product_id,
                     base_price=float(variants[0].get('price', 0.0)) if variants else 0.0
                 )
                 db.session.add(db_product)
-                db.session.commit()
+                # Sla het nieuwe product direct op om een ID te krijgen voor de varianten
+                db.session.commit() 
                 print(f"Nieuw product aangemaakt: {db_product.name}")
 
+            variants_processed = 0
             for p_variant in variants:
                 p_variant_id = p_variant.get('id')
                 
@@ -161,13 +162,17 @@ def sync_printful_command():
                 db_variant.size = p_variant.get('size')
                 db_variant.price = float(p_variant.get('price'))
                 db_variant.merch_color_type = get_color_type_from_name(p_variant.get('color'))
-                db_variant.available_regions = [zone['id'] for zone in p_variant.get('availability_zones', []) if zone.get('id')]
+                db_variant.available_regions = p_variant.get('availability_regions', [])
                 db_variant.print_areas = {
                     "front": {"name": "Front", "image_url": p_variant.get('product', {}).get('image')},
                 }
-        
-        db.session.commit()
-        print(f"\n...Klaar met template {template_product_name}.")
+                variants_processed += 1
+            
+            # --- DE CRUCIALE WIJZIGING ---
+            # Sla alle nieuwe/gewijzigde varianten voor dit product op
+            db.session.commit()
+            print(f"{variants_processed} varianten verwerkt voor {db_product.name}.")
+            print(f"...Klaar met template {template_product_name}.")
 
     except requests.exceptions.RequestException as e:
         print(f"Fout bij communicatie met Printful: {e}")
