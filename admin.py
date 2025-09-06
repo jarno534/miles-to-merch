@@ -30,7 +30,6 @@ class MyAdminIndexView(AdminIndexView):
         return redirect('/')
 
 # --- Verbeterde Views voor je Modellen ---
-
 class ProductAdminView(SecuredModelView):
     column_list = ('name', 'printful_product_id', 'base_price', 'additional_price_per_area', 'variants')
     column_searchable_list = ['name']
