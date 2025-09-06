@@ -142,7 +142,6 @@ def sync_printful_command():
                     base_price=float(variants[0].get('price', 0.0)) if variants else 0.0
                 )
                 db.session.add(db_product)
-                # Sla het nieuwe product direct op om een ID te krijgen voor de varianten
                 db.session.commit() 
                 print(f"Nieuw product aangemaakt: {db_product.name}")
 
@@ -164,13 +163,22 @@ def sync_printful_command():
                 db_variant.price = float(p_variant.get('price'))
                 db_variant.merch_color_type = get_color_type_from_name(p_variant.get('color'))
                 db_variant.available_regions = p_variant.get('availability_regions', [])
+                mockup_url = None
+                for file_info in p_variant.get('files', []):
+                    if file_info.get('type') == 'mockup' and file_info.get('placement') == 'front':
+                        mockup_url = file_info.get('preview_url')
+                        break
+                if not mockup_url:
+                    mockup_url = p_variant.get('product', {}).get('image')
+
+                db_variant.print_areas = {
+                    "front": {"name": "Front", "image_url": mockup_url}
+                }
                 db_variant.print_areas = {
                     "front": {"name": "Front", "image_url": p_variant.get('product', {}).get('image')},
                 }
                 variants_processed += 1
             
-            # --- DE CRUCIALE WIJZIGING ---
-            # Sla alle nieuwe/gewijzigde varianten voor dit product op
             db.session.commit()
             print(f"{variants_processed} varianten verwerkt voor {db_product.name}.")
             print(f"...Klaar met template {template_product_name}.")
