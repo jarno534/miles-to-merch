@@ -13,7 +13,7 @@
         @click="selectProduct(product.id)"
       >
         <img
-          :src="getProductImageUrl(product)"
+          :src="product.variants[0]?.mockup_url"
           :alt="product.name"
           class="product-image"
         />
@@ -21,8 +21,10 @@
           <h2 class="product-name">{{ product.name }}</h2>
           <p class="product-description">{{ product.description }}</p>
           <div class="product-footer">
-            <span class="product-price">€{{ product.price.toFixed(2) }}</span>
-            <button class="details-button">View Details</button>
+            <span class="product-price" v-if="product.variants.length > 0">
+              From €{{ product.variants[0].price.toFixed(2) }}
+            </span>
+            <button class="details-button">View Options</button>
           </div>
         </div>
       </div>
