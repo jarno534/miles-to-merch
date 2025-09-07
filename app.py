@@ -98,6 +98,8 @@ def seed_db_command():
     db.session.commit()
     print("Testproduct succesvol toegevoegd!")
 
+# In app.py
+
 @app.cli.command("sync-printful")
 def sync_printful_command():
     """Haalt product templates op van Printful en synchroniseert de database."""
@@ -130,23 +132,38 @@ def sync_printful_command():
 
             details_response = requests.get(f'https://api.printful.com/products/{template_product_id}', headers=headers)
             details_response.raise_for_status()
-            product_details = details_response.json().get('result', {}).get('product', {})
-            variants = details_response.json().get('result', {}).get('variants', [])
+            product_details = details_response.json().get('result', {})
+            product_data = product_details.get('product', {})
+            variants_data = product_details.get('variants', [])
             
+            # --- NIEUWE LOGICA VOOR MOCKUP URLS ---
+            # Extract alle mockup URLs uit de hoofd "files" van het product.
+            # We maken een dictionary die we later kunnen gebruiken om te matchen.
+            product_files = product_data.get('files', [])
+            mockup_urls_by_variant_id = {}
+            for file_info in product_files:
+                if file_info.get('type') == 'mockup' and file_info.get('placement') == 'front':
+                    # De Printful API linkt mockup files aan de variant_ids die ze vertegenwoordigen
+                    for variant_id_str in file_info.get('variant_ids', []):
+                        variant_id = int(variant_id_str)
+                        if variant_id not in mockup_urls_by_variant_id: # Pak de eerste geschikte mockup
+                            mockup_urls_by_variant_id[variant_id] = file_info.get('preview_url')
+            # --- EINDE NIEUWE LOGICA ---
+
             db_product = Product.query.filter_by(printful_product_id=template_product_id).first()
             if not db_product:
                 db_product = Product(
-                    name=product_details.get('title', template_product_name),
-                    description=product_details.get('description'),
+                    name=product_data.get('title', template_product_name),
+                    description=product_data.get('description'),
                     printful_product_id=template_product_id,
-                    base_price=float(variants[0].get('price', 0.0)) if variants else 0.0
+                    base_price=float(variants_data[0].get('price', 0.0)) if variants_data else 0.0
                 )
                 db.session.add(db_product)
-                db.session.commit() 
+                db.session.commit()
                 print(f"Nieuw product aangemaakt: {db_product.name}")
 
             variants_processed = 0
-            for p_variant in variants:
+            for p_variant in variants_data:
                 p_variant_id = p_variant.get('id')
                 
                 db_variant = Variant.query.filter_by(printful_variant_id=p_variant_id).first()
@@ -154,7 +171,7 @@ def sync_printful_command():
                     db_variant = Variant(
                         product_id=db_product.id,
                         printful_variant_id=p_variant_id,
-                        is_active=False
+                        is_active=False # Nieuwe varianten zijn standaard inactief
                     )
                     db.session.add(db_variant)
                 
@@ -163,20 +180,18 @@ def sync_printful_command():
                 db_variant.price = float(p_variant.get('price'))
                 db_variant.merch_color_type = get_color_type_from_name(p_variant.get('color'))
                 db_variant.available_regions = p_variant.get('availability_regions', [])
-                mockup_url = None
-                for file_info in p_variant.get('files', []):
-                    if file_info.get('type') == 'mockup' and file_info.get('placement') == 'front':
-                        mockup_url = file_info.get('preview_url')
-                        break
-                if not mockup_url:
-                    mockup_url = p_variant.get('product', {}).get('image')
-
+                
+                # --- GEFIXTE MOCKUP URL LOGICA ---
+                # Nu halen we de mockup_url uit onze eerder gemaakte dictionary
+                mockup_url = mockup_urls_by_variant_id.get(p_variant_id)
+                
+                # Zorg ervoor dat de print_areas een JSON-structuur blijft
                 db_variant.print_areas = {
                     "front": {"name": "Front", "image_url": mockup_url}
+                    # Voeg hier meer placements toe als Printful die aanbiedt en je ze wilt opslaan
                 }
-                db_variant.print_areas = {
-                    "front": {"name": "Front", "image_url": p_variant.get('product', {}).get('image')},
-                }
+                # --- EINDE GEFIXTE MOCKUP URL LOGICA ---
+
                 variants_processed += 1
             
             db.session.commit()
@@ -185,6 +200,9 @@ def sync_printful_command():
 
     except requests.exceptions.RequestException as e:
         print(f"Fout bij communicatie met Printful: {e}")
+        db.session.rollback()
+    except Exception as e:
+        print(f"Onverwachte fout tijdens synchronisatie: {e}")
         db.session.rollback()
 
     print("\nSynchronisatie voltooid!")
