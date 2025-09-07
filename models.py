@@ -62,7 +62,8 @@ class Variant(db.Model):
     size = db.Column(db.String(10), nullable=False)
     price = db.Column(db.Float, nullable=False)
     merch_color_type = db.Column(db.String(10), nullable=False)
-    image_urls = db.Column(db.JSON, nullable=False)
+    # FIX: Changed nullable to True for more robustness if an image is missing from the API.
+    image_urls = db.Column(db.JSON, nullable=True) 
     available_regions = db.Column(db.JSON, nullable=False)
     is_active = db.Column(db.Boolean, default=False, nullable=False)
 
@@ -98,16 +99,13 @@ class Design(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     variant_id = db.Column(db.Integer, db.ForeignKey('variant.id'), nullable=False)
-    # --- DE FIX: Voeg een expliciete product_id kolom toe ---
     product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
     preview_url = db.Column(db.String(255), nullable=True)
     design_data = db.Column(db.JSON, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     name = db.Column(db.String(100), nullable=False, default="My Design")
-    
-    # Relaties
     variant = db.relationship('Variant')
-    product = db.relationship('Product') # Deze relatie lost de fout op
+    product = db.relationship('Product')
 
     def to_dict(self):
         return {

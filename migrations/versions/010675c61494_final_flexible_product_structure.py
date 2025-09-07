@@ -1,8 +1,8 @@
 """Final flexible product structure
 
-Revision ID: 1c878a9e3c10
+Revision ID: 010675c61494
 Revises: 
-Create Date: 2025-09-08 00:59:38.771958
+Create Date: 2025-09-08 01:33:49.015266
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '1c878a9e3c10'
+revision = '010675c61494'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -67,7 +67,7 @@ def upgrade():
     sa.Column('size', sa.String(length=10), nullable=False),
     sa.Column('price', sa.Float(), nullable=False),
     sa.Column('merch_color_type', sa.String(length=10), nullable=False),
-    sa.Column('image_urls', sa.JSON(), nullable=False),
+    sa.Column('image_urls', sa.JSON(), nullable=True),
     sa.Column('available_regions', sa.JSON(), nullable=False),
     sa.Column('is_active', sa.Boolean(), nullable=False),
     sa.ForeignKeyConstraint(['product_id'], ['product.id'], ),

@@ -1,7 +1,7 @@
 from flask import Flask, jsonify
 from dotenv import load_dotenv
 from config import Config
-from models import User, Product, Variant, Design, Order # Variant is nieuw
+from models import User, Product, Variant, Design, Order, PrintArea
 from routes.auth import auth_bp
 from routes.api import api_bp
 from flask_migrate import Migrate
@@ -11,6 +11,7 @@ import os
 import click
 import requests
 import json
+import re # FIX: Added missing import
 
 load_dotenv()
 migrate = Migrate()
@@ -54,7 +55,7 @@ def seed_db_command():
     print("Database is gereset.")
 
     # Voeg een testproduct toe
-    product1 = Product(name="Unisex Staple T-Shirt | Bella + Canvas 3001", printful_product_id=71, base_price=12.25)
+    product1 = Product(name="Unisex Staple T-Shirt | Bella + Canvas 3001", printful_product_id=71)
     db.session.add(product1)
     
     # Voeg de printvlakken voor dit product toe
@@ -107,11 +108,11 @@ def sync_printful_command():
             
             db_product = Product.query.filter_by(printful_product_id=template_product_id).first()
             if not db_product:
+                # FIX: 'base_price' verwijderd omdat dit veld niet bestaat in het Product-model.
                 db_product = Product(
                     name=product_data.get('title', template_product_name),
                     description=product_data.get('description'),
-                    printful_product_id=template_product_id,
-                    base_price=float(variants_data[0].get('price', 0.0)) if variants_data else 0.0
+                    printful_product_id=template_product_id
                 )
                 db.session.add(db_product)
                 db.session.commit()
@@ -136,17 +137,16 @@ def sync_printful_command():
                 db_variant.price = float(p_variant.get('price'))
                 db_variant.merch_color_type = get_color_type_from_name(p_variant.get('color'))
                 
-                # De regio's zijn een dictionary, we slaan de keys op (bv. ['US', 'EU'])
                 db_variant.available_regions = list(p_variant.get('availability_regions', {}).keys())
                 
-                # --- DE DEFINITIEVE FIX VOOR DE AFBEELDING ---
-                # Elke variant heeft zijn eigen 'image' sleutel. Dit is de mockup URL.
+                # --- FIX VOOR DE AFBEELDING ---
+                # Sla de mockup URL op in het juiste veld 'image_urls' van het Variant model.
+                # Dit veld is van het type JSON, dus we slaan het gestructureerd op.
                 mockup_url = p_variant.get('image')
-                
-                db_variant.print_areas = {
-                    "front": {"name": "Front", "image_url": mockup_url}
-                    # Hier kun je later andere placements toevoegen als je die nodig hebt
-                }
+                if mockup_url:
+                    db_variant.image_urls = {'default': mockup_url}
+                else:
+                    db_variant.image_urls = None # Of {} als je liever een leeg object hebt
                 # --- EINDE FIX ---
 
                 variants_processed += 1
