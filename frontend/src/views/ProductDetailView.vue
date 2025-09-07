@@ -92,33 +92,28 @@ export default {
     };
   },
   computed: {
-    // Toont de afbeelding van de geselecteerde kleur, of de eerste variant als er niets is gekozen
     displayImageUrl() {
       const variantToShow =
         this.variantsForSelectedColor[0] || this.product?.variants[0];
       return variantToShow?.mockup_url || "";
     },
-    // Toont de prijs van de geselecteerde variant, of de basisprijs als er niets is gekozen
     displayPrice() {
       if (this.selectedVariant) {
         return this.selectedVariant.price;
       }
       return this.product?.variants[0]?.price || 0;
     },
-    // Haalt een unieke lijst van beschikbare kleuren op
     availableColors() {
       if (!this.product?.variants) return [];
       const colors = this.product.variants.map((v) => v.color);
       return [...new Set(colors)];
     },
-    // Haalt de beschikbare maten op voor de GESELECTEERDE kleur
     availableSizes() {
       if (!this.selectedColor || !this.product?.variants) return [];
       return this.product.variants
         .filter((v) => v.color === this.selectedColor)
         .map((v) => v.size);
     },
-    // Vindt de specifieke variant die overeenkomt met de gekozen kleur en maat
     selectedVariant() {
       if (!this.selectedColor || !this.selectedSize || !this.product?.variants)
         return null;
@@ -128,7 +123,6 @@ export default {
         ) || null
       );
     },
-    // Een lijst van alle varianten voor de geselecteerde kleur (handig voor de afbeelding)
     variantsForSelectedColor() {
       if (!this.selectedColor || !this.product?.variants) return [];
       return this.product.variants.filter(
@@ -138,7 +132,6 @@ export default {
   },
   async created() {
     try {
-      // We hebben nu maar één API-aanroep nodig die alles ophaalt
       const response = await axios.get(
         `${API_BASE_URL}/api/products/${this.productId}`
       );
@@ -153,7 +146,6 @@ export default {
   methods: {
     selectColor(colorName) {
       this.selectedColor = colorName;
-      // Reset de maatkeuze als de huidige maat niet beschikbaar is in de nieuwe kleur
       if (!this.availableSizes.includes(this.selectedSize)) {
         this.selectedSize = null;
       }
@@ -161,18 +153,14 @@ export default {
     selectSize(size) {
       this.selectedSize = size;
     },
-    // Geeft een kleine thumbnail terug voor de kleurkeuze-knoppen
     getColorSwatchUrl(colorName) {
       const variant = this.product.variants.find((v) => v.color === colorName);
       return variant?.mockup_url || "";
     },
     startDesigning() {
       if (!this.selectedVariant) return;
-
-      // Sla de ID's op voor de volgende pagina
       localStorage.setItem("selectedVariantId", this.selectedVariant.id);
       localStorage.setItem("selectedProductId", this.productId);
-
       this.$router.push({
         name: "StartDesign",
         params: { productId: this.productId },
@@ -183,11 +171,10 @@ export default {
 </script>
 
 <style scoped>
-/* Deze CSS is iets aangepast voor een betere weergave */
 .product-detail-page {
   display: flex;
   justify-content: center;
-  align-items: flex-start; /* Zorgt dat de kaart bovenaan begint */
+  align-items: flex-start;
   padding: 40px;
   min-height: 100vh;
   background-color: #f0f2f5;
@@ -205,7 +192,7 @@ export default {
 }
 .product-image-container {
   flex: 1;
-  position: sticky; /* Maakt de afbeelding "sticky" bij het scrollen */
+  position: sticky;
   top: 40px;
 }
 .product-image {

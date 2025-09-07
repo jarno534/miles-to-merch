@@ -67,7 +67,6 @@ export default {
 </script>
 
 <style scoped>
-/* (Stijlen voor beide formulieren, zie hieronder) */
 .auth-page {
   display: flex;
   justify-content: center;

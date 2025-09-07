@@ -99,12 +99,12 @@ def seed_db_command():
     db.session.commit()
     print("Testproduct succesvol toegevoegd!")
 
-# In app.py (zorg dat 'import json' bovenaan staat)
+# In app.py
 
 @app.cli.command("sync-printful")
 def sync_printful_command():
-    """DEBUG: Haalt de ruwe data voor de eerste product template op en print deze."""
-    print("--- DEBUG MODE: Ruwe data ophalen van Printful ---")
+    """Haalt product templates op van Printful en synchroniseert de database."""
+    print("Start synchronisatie met Printful Product Templates...")
     API_KEY = os.environ.get('PRINTFUL_API_KEY')
     if not API_KEY:
         print("Error: PRINTFUL_API_KEY is niet ingesteld.")
@@ -119,28 +119,79 @@ def sync_printful_command():
         templates_data = templates_response.json().get('result', {})
         templates = templates_data.get('items', [])
         
+        print(f"{len(templates)} product-templates gevonden.")
+
         if not templates:
-            print("Geen product-templates gevonden in je Printful account.")
+            print("Geen templates gevonden. Maak eerst een template aan in je Printful dashboard.")
             return
 
-        # Pak de eerste de beste template voor deze test
-        first_template = templates[0]
-        product_id = first_template.get('product_id')
-        print(f"Template gevonden. Details ophalen voor product ID: {product_id}...")
+        for template in templates:
+            template_product_id = template.get('product_id')
+            template_product_name = template.get('title') or "Unnamed Product"
+            
+            print(f"\nVerwerken van template: {template_product_name} (Product ID: {template_product_id})")
 
-        # Haal de details op voor dat ene product
-        details_response = requests.get(f'https://api.printful.com/products/{product_id}', headers=headers)
-        details_response.raise_for_status()
-        full_details = details_response.json()
-        
-        # Print de volledige, opgemaakte JSON response
-        print("\n--- VOLLEDIGE RUWE DATA VAN PRINTFUL ---")
-        print(json.dumps(full_details, indent=2))
-        print("----------------------------------------")
-        
-        print("\nDebug-script voltooid. Kopieer de JSON-output hierboven.")
+            # Haal de details op voor dat ene product
+            details_response = requests.get(f'https://api.printful.com/products/{template_product_id}', headers=headers)
+            details_response.raise_for_status()
+            product_details = details_response.json().get('result', {})
+            product_data = product_details.get('product', {})
+            variants_data = product_details.get('variants', [])
+            
+            db_product = Product.query.filter_by(printful_product_id=template_product_id).first()
+            if not db_product:
+                db_product = Product(
+                    name=product_data.get('title', template_product_name),
+                    description=product_data.get('description'),
+                    printful_product_id=template_product_id,
+                    base_price=float(variants_data[0].get('price', 0.0)) if variants_data else 0.0
+                )
+                db.session.add(db_product)
+                db.session.commit()
+                print(f"Nieuw product aangemaakt: {db_product.name}")
+
+            variants_processed = 0
+            for p_variant in variants_data:
+                p_variant_id = p_variant.get('id')
+                
+                db_variant = Variant.query.filter_by(printful_variant_id=p_variant_id).first()
+                if not db_variant:
+                    db_variant = Variant(
+                        product_id=db_product.id,
+                        printful_variant_id=p_variant_id,
+                        is_active=False
+                    )
+                    db.session.add(db_variant)
+                
+                # Update de data van de variant
+                db_variant.color = p_variant.get('color')
+                db_variant.size = p_variant.get('size')
+                db_variant.price = float(p_variant.get('price'))
+                db_variant.merch_color_type = get_color_type_from_name(p_variant.get('color'))
+                
+                # De regio's zijn een dictionary, we slaan de keys op (bv. ['US', 'EU'])
+                db_variant.available_regions = list(p_variant.get('availability_regions', {}).keys())
+                
+                # --- DE DEFINITIEVE FIX VOOR DE AFBEELDING ---
+                # Elke variant heeft zijn eigen 'image' sleutel. Dit is de mockup URL.
+                mockup_url = p_variant.get('image')
+                
+                db_variant.print_areas = {
+                    "front": {"name": "Front", "image_url": mockup_url}
+                    # Hier kun je later andere placements toevoegen als je die nodig hebt
+                }
+                # --- EINDE FIX ---
+
+                variants_processed += 1
+            
+            db.session.commit()
+            print(f"{variants_processed} varianten verwerkt voor {db_product.name}.")
 
     except requests.exceptions.RequestException as e:
         print(f"Fout bij communicatie met Printful: {e}")
+        db.session.rollback()
     except Exception as e:
-        print(f"Onverwachte fout: {e}")
+        print(f"Onverwachte fout tijdens synchronisatie: {e}")
+        db.session.rollback()
+
+    print("\nSynchronisatie voltooid!")
