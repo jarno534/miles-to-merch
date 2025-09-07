@@ -5,51 +5,40 @@ from models import User, Product, Variant, Design, Order # Variant is nieuw
 from routes.auth import auth_bp
 from routes.api import api_bp
 from flask_migrate import Migrate
+from extensions import db, cors
+from admin import setup_admin
 import os
 import click
 import requests
 import json
-from extensions import db, cors
-from admin import setup_admin
 
 load_dotenv()
 migrate = Migrate()
 
-# --- De App Factory Functie ---
 def create_app(config_class=Config):
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_object(config_class)
-
     db.init_app(app)
     migrate.init_app(app, db)
-
-    allowed_origins = [
-        "https://miles-to-merch.vercel.app",
-        "http://localhost:8081"
-    ]
-    cors.init_app(
-        app,
-        origins=allowed_origins,
-        supports_credentials=True
-    )
-
+    cors.init_app(app, origins=["https://miles-to-merch.vercel.app", "http://localhost:8081"], supports_credentials=True)
     setup_admin(app)
-
     app.register_blueprint(auth_bp)
     app.register_blueprint(api_bp)
-
     @app.route('/')
     def index():
         return jsonify({'message': 'Welcome!'})
-
     return app
 
-# --- Maak een app instance aan speciaal voor de CLI commando's ---
 app = create_app()
 
-# --- Helper Functies voor CLI ---
+def slugify(text):
+    if not text: return ""
+    text = text.lower()
+    text = re.sub(r'[\s/\|]+', '-', text)
+    text = re.sub(r'[^\w\-]', '', text)
+    return text
+
 def get_color_type_from_name(color_name):
-    """Bepaalt 'light' of 'dark' op basis van de kleurnaam."""
     dark_keywords = ['black', 'charcoal', 'navy', 'dark', 'forest', 'maroon', 'burgundy']
     if color_name is None: return 'light'
     for keyword in dark_keywords:
@@ -57,49 +46,27 @@ def get_color_type_from_name(color_name):
             return 'dark'
     return 'light'
 
-# --- CLI Commando's ---
 @app.cli.command("seed-db")
 def seed_db_command():
-    """Vult de database met één testproduct en variant."""
+    """Reset en vult de database met test Print Areas."""
     db.drop_all()
     db.create_all()
     print("Database is gereset.")
 
-    if Variant.query.first() is not None:
-        print("Database bevat al varianten. Seeden wordt overgeslagen.")
-        return
-
-    print("Database vullen met een testproduct...")
-    
-    product1 = Product(
-        name="Unisex Staple T-Shirt | Bella + Canvas 3001",
-        description="Een comfortabel en stijlvol shirt.",
-        printful_product_id=71,
-        base_price=15.95,
-        additional_price_per_area=5.00
-    )
+    # Voeg een testproduct toe
+    product1 = Product(name="Unisex Staple T-Shirt | Bella + Canvas 3001", printful_product_id=71, base_price=12.25)
     db.session.add(product1)
-
-    variant1 = Variant(
-        product=product1,
-        printful_variant_id=4012, # Zwart, Maat L
-        color="Black Heather",
-        size="L",
-        price=24.95,
-        merch_color_type="dark",
-        available_regions=["Europe", "USA"],
-        is_active=True,
-        print_areas={
-            "front": { "name": "Front", "image_url": "/images/unisex-staple-t-shirt-black-heather-front.png" },
-            "back": { "name": "Back", "image_url": "/images/unisex-staple-t-shirt-black-heather-back.png" }
-        }
-    )
-    db.session.add(variant1)
-
+    
+    # Voeg de printvlakken voor dit product toe
+    print_areas_data = [
+        PrintArea(product=product1, placement='front', name='Grote Print Voorkant', price=5.95, width=900, height=1200, top=200, left=550, mockup_width=2000, mockup_height=2000),
+        PrintArea(product=product1, placement='back', name='Grote Print Achterkant', price=5.95, width=900, height=1200, top=200, left=550, mockup_width=2000, mockup_height=2000),
+        PrintArea(product=product1, placement='sleeve_left', name='Linkermouw', price=2.20, width=200, height=200, top=400, left=150, mockup_width=2000, mockup_height=2000),
+        PrintArea(product=product1, placement='sleeve_right', name='Rechtermouw', price=2.20, width=200, height=200, top=400, left=1650, mockup_width=2000, mockup_height=2000),
+    ]
+    db.session.add_all(print_areas_data)
     db.session.commit()
-    print("Testproduct succesvol toegevoegd!")
-
-# In app.py
+    print("Testproduct en printvlakken succesvol toegevoegd!")
 
 @app.cli.command("sync-printful")
 def sync_printful_command():
