@@ -1,35 +1,42 @@
 <template>
   <div class="product-detail-page">
     <SpinnerComponent v-if="loading" text="Loading product details..." />
-    <div v-if="product" class="product-container">
+    <div v-else-if="product" class="product-container">
       <div class="product-image-container">
         <img :src="displayImageUrl" :alt="product.name" class="product-image" />
       </div>
       <div class="product-info-container">
         <h1 class="product-name">{{ product.name }}</h1>
-        <p class="product-price">€{{ product.price.toFixed(2) }}</p>
+        <p class="product-price">€{{ displayPrice.toFixed(2) }}</p>
         <p class="product-description">{{ product.description }}</p>
 
         <div v-if="availableColors.length > 0" class="options-section">
           <h2>
-            Color: <span class="selected-option">{{ selectedColor }}</span>
+            Color:
+            <span class="selected-option">{{
+              selectedColor || "Select a color"
+            }}</span>
           </h2>
           <div class="color-swatches">
             <button
               v-for="color in availableColors"
-              :key="color.name"
+              :key="color"
               class="color-swatch"
-              :style="{ backgroundColor: color.code }"
-              :class="{ active: selectedColor === color.name }"
-              @click="selectColor(color.name)"
-              :title="color.name"
-            ></button>
+              :class="{ active: selectedColor === color }"
+              @click="selectColor(color)"
+              :title="color"
+            >
+              <img :src="getColorSwatchUrl(color)" :alt="color" />
+            </button>
           </div>
         </div>
 
         <div v-if="availableSizes.length > 0" class="options-section">
           <h2>
-            Size: <span class="selected-option">{{ selectedSize }}</span>
+            Size:
+            <span class="selected-option">{{
+              selectedSize || "Select a size"
+            }}</span>
           </h2>
           <div class="size-buttons">
             <button
@@ -47,15 +54,15 @@
         <button
           @click="startDesigning"
           class="design-button"
-          :disabled="!isReadyToDesign"
+          :disabled="!selectedVariant"
         >
-          Start Designing
+          Customize Design
         </button>
         <p
-          v-if="variants.length > 0 && !isReadyToDesign"
+          v-if="product.variants.length > 0 && !selectedVariant"
           class="selection-prompt"
         >
-          Please select a color and size.
+          Please select a color and size to continue.
         </p>
       </div>
     </div>
@@ -80,107 +87,62 @@ export default {
     return {
       product: null,
       loading: true,
-      variants: [],
-      printfulProductDetails: null,
       selectedColor: null,
       selectedSize: null,
-      selectedMockupUrl: null,
-      selectedVariantId: null,
     };
   },
   computed: {
+    // Toont de afbeelding van de geselecteerde kleur, of de eerste variant als er niets is gekozen
     displayImageUrl() {
-      if (this.selectedMockupUrl) {
-        return this.selectedMockupUrl;
-      }
-      if (this.product && this.product.print_areas) {
-        const firstAreaKey = Object.keys(this.product.print_areas)[0];
-        if (firstAreaKey) {
-          return this.product.print_areas[firstAreaKey].image_url;
-        }
-      }
-      return "";
+      const variantToShow =
+        this.variantsForSelectedColor[0] || this.product?.variants[0];
+      return variantToShow?.mockup_url || "";
     },
-
+    // Toont de prijs van de geselecteerde variant, of de basisprijs als er niets is gekozen
+    displayPrice() {
+      if (this.selectedVariant) {
+        return this.selectedVariant.price;
+      }
+      return this.product?.variants[0]?.price || 0;
+    },
+    // Haalt een unieke lijst van beschikbare kleuren op
     availableColors() {
-      if (!this.variants) return [];
-
-      const curatedColorNames = [
-        "White",
-        "Black",
-        "Navy",
-        "Athletic Heather",
-        "Red",
-        "Royal Blue",
-        "Kelly",
-        "Asphalt",
-      ];
-
-      const uniqueColors = new Map();
-      this.variants.forEach((v) => {
-        if (
-          v.color &&
-          v.color_code &&
-          curatedColorNames.includes(v.color) &&
-          !uniqueColors.has(v.color)
-        ) {
-          uniqueColors.set(v.color, v.color_code);
-        }
-      });
-
-      const sortedColorArray = Array.from(uniqueColors, ([name, code]) => ({
-        name,
-        code,
-      })).sort(
-        (a, b) =>
-          curatedColorNames.indexOf(a.name) - curatedColorNames.indexOf(b.name)
-      );
-
-      return sortedColorArray;
+      if (!this.product?.variants) return [];
+      const colors = this.product.variants.map((v) => v.color);
+      return [...new Set(colors)];
     },
-
+    // Haalt de beschikbare maten op voor de GESELECTEERDE kleur
     availableSizes() {
-      if (!this.selectedColor || !this.variants) return [];
-      return this.variants
+      if (!this.selectedColor || !this.product?.variants) return [];
+      return this.product.variants
         .filter((v) => v.color === this.selectedColor)
         .map((v) => v.size);
     },
-
+    // Vindt de specifieke variant die overeenkomt met de gekozen kleur en maat
     selectedVariant() {
-      if (!this.selectedColor || !this.selectedSize || !this.variants)
+      if (!this.selectedColor || !this.selectedSize || !this.product?.variants)
         return null;
       return (
-        this.variants.find(
+        this.product.variants.find(
           (v) => v.color === this.selectedColor && v.size === this.selectedSize
         ) || null
       );
     },
-
-    isReadyToDesign() {
-      if (!this.product) {
-        return false;
-      }
-      if (!this.product.printful_product_id || this.variants.length === 0) {
-        return true;
-      }
-      return !!this.selectedVariant;
+    // Een lijst van alle varianten voor de geselecteerde kleur (handig voor de afbeelding)
+    variantsForSelectedColor() {
+      if (!this.selectedColor || !this.product?.variants) return [];
+      return this.product.variants.filter(
+        (v) => v.color === this.selectedColor
+      );
     },
   },
-
   async created() {
     try {
-      const productRes = await axios.get(
+      // We hebben nu maar één API-aanroep nodig die alles ophaalt
+      const response = await axios.get(
         `${API_BASE_URL}/api/products/${this.productId}`
       );
-      this.product = productRes.data;
-
-      if (this.product.printful_product_id) {
-        const detailsRes = await axios.get(
-          `${API_BASE_URL}/api/products/${this.productId}/printful-details`
-        );
-        this.printfulProductDetails = detailsRes.data;
-        this.variants = detailsRes.data.variants;
-      }
+      this.product = response.data;
     } catch (error) {
       console.error("Error fetching product data:", error);
       this.$router.push("/");
@@ -188,45 +150,28 @@ export default {
       this.loading = false;
     }
   },
-
   methods: {
     selectColor(colorName) {
       this.selectedColor = colorName;
+      // Reset de maatkeuze als de huidige maat niet beschikbaar is in de nieuwe kleur
       if (!this.availableSizes.includes(this.selectedSize)) {
         this.selectedSize = null;
       }
-
-      const firstVariantOfColor = this.variants.find(
-        (v) => v.color === colorName
-      );
-
-      if (firstVariantOfColor && firstVariantOfColor.image) {
-        this.selectedMockupUrl = firstVariantOfColor.image;
-      }
     },
-
     selectSize(size) {
       this.selectedSize = size;
-      const variant = this.variants.find(
-        (v) => v.color === this.selectedColor && v.size === size
-      );
-      if (variant) {
-        this.selectedVariantId = variant.id;
-      }
     },
-
+    // Geeft een kleine thumbnail terug voor de kleurkeuze-knoppen
+    getColorSwatchUrl(colorName) {
+      const variant = this.product.variants.find((v) => v.color === colorName);
+      return variant?.mockup_url || "";
+    },
     startDesigning() {
-      if (!this.isReadyToDesign) return;
+      if (!this.selectedVariant) return;
 
-      localStorage.setItem("selectedVariantId", this.selectedVariantId);
+      // Sla de ID's op voor de volgende pagina
+      localStorage.setItem("selectedVariantId", this.selectedVariant.id);
       localStorage.setItem("selectedProductId", this.productId);
-
-      if (this.printfulProductDetails) {
-        localStorage.setItem(
-          "editorProductData",
-          JSON.stringify(this.printfulProductDetails)
-        );
-      }
 
       this.$router.push({
         name: "StartDesign",
@@ -238,10 +183,11 @@ export default {
 </script>
 
 <style scoped>
+/* Deze CSS is iets aangepast voor een betere weergave */
 .product-detail-page {
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start; /* Zorgt dat de kaart bovenaan begint */
   padding: 40px;
   min-height: 100vh;
   background-color: #f0f2f5;
@@ -259,6 +205,8 @@ export default {
 }
 .product-image-container {
   flex: 1;
+  position: sticky; /* Maakt de afbeelding "sticky" bij het scrollen */
+  top: 40px;
 }
 .product-image {
   width: 100%;
@@ -272,18 +220,21 @@ export default {
 .product-name {
   font-size: 2.5rem;
   margin: 0 0 10px;
+  text-align: left;
 }
 .product-price {
   font-size: 1.8rem;
   font-weight: bold;
   color: #fc4c02;
   margin-bottom: 20px;
+  text-align: left;
 }
 .product-description {
   font-size: 1.1rem;
   line-height: 1.6;
   color: #555;
   margin-bottom: 30px;
+  text-align: left;
 }
 .options-section {
   margin-bottom: 25px;
@@ -305,17 +256,24 @@ export default {
   gap: 10px;
 }
 .color-swatch {
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   border: 2px solid #ccc;
   cursor: pointer;
   transition: transform 0.2s, border-color 0.2s;
+  padding: 2px;
+  background-color: #fff;
+}
+.color-swatch img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
 }
 .color-swatch.active {
   border-color: #fc4c02;
   transform: scale(1.15);
-  box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
 }
 .size-button {
   padding: 8px 15px;
