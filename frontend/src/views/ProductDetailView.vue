@@ -95,7 +95,7 @@ export default {
     displayImageUrl() {
       const variantToShow =
         this.variantsForSelectedColor[0] || this.product?.variants[0];
-      return variantToShow?.image_urls?.mockup_with_model || "";
+      return variantToShow?.mockup_url || "";
     },
     displayPrice() {
       if (this.selectedVariant) {
@@ -115,7 +115,8 @@ export default {
         .map((v) => v.size);
     },
     selectedVariant() {
-      if (!this.selectedColor || !this.selectedSize) return null;
+      if (!this.selectedColor || !this.selectedSize || !this.product?.variants)
+        return null;
       return (
         this.product.variants.find(
           (v) => v.color === this.selectedColor && v.size === this.selectedSize
@@ -127,10 +128,6 @@ export default {
       return this.product.variants.filter(
         (v) => v.color === this.selectedColor
       );
-    },
-    getColorSwatchUrl(colorName) {
-      const variant = this.product.variants.find((v) => v.color === colorName);
-      return variant?.image_urls?.mockup_with_model || "";
     },
   },
   async created() {
@@ -155,6 +152,10 @@ export default {
     },
     selectSize(size) {
       this.selectedSize = size;
+    },
+    getColorSwatchUrl(colorName) {
+      const variant = this.product.variants.find((v) => v.color === colorName);
+      return variant?.mockup_url || "";
     },
     startDesigning() {
       if (!this.selectedVariant) return;
