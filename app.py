@@ -47,17 +47,29 @@ def get_color_type_from_name(color_name):
     return 'light'
 
 @app.cli.command("seed-db")
-def seed_db_command():
-    """Reset en vult de database met test Print Areas."""
-    db.drop_all()
-    db.create_all()
-    print("Database is gereset.")
+@click.option('--full-reset', is_flag=True, help='Verwijdert ALLE data en start opnieuw.')
+def seed_db_command(full_reset):
+    """Vult de database met initiële data voor Print Areas. Gebruik --full-reset voor een complete reset."""
+    
+    if full_reset:
+        if click.confirm('WAARSCHUWING: Dit verwijdert ALLE data (gebruikers, bestellingen, etc). Weet je het zeker?'):
+            db.drop_all()
+            db.create_all()
+            print("Database volledig gereset.")
+        else:
+            print("Reset geannuleerd.")
+            return
 
-    # Voeg een testproduct toe
+    print("Product, Variant, en PrintArea tabellen worden leeggemaakt...")
+    db.session.query(Variant).delete()
+    db.session.query(PrintArea).delete()
+    db.session.query(Product).delete()
+    db.session.commit()
+    print("Catalogus is leeg.")
+
     product1 = Product(name="Unisex Staple T-Shirt | Bella + Canvas 3001", printful_product_id=71)
     db.session.add(product1)
     
-    # Voeg de printvlakken voor dit product toe
     print_areas_data = [
         PrintArea(product=product1, placement='front', name='Grote Print Voorkant', price=5.95, width=900, height=1200, top=200, left=550, mockup_width=2000, mockup_height=2000),
         PrintArea(product=product1, placement='back', name='Grote Print Achterkant', price=5.95, width=900, height=1200, top=200, left=550, mockup_width=2000, mockup_height=2000),

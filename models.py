@@ -19,6 +19,7 @@ class User(db.Model):
     expires_at = db.Column(db.Integer, nullable=True)
     is_admin = db.Column(db.Boolean, default=False, nullable=False)
     designs = db.relationship('Design', backref='user', lazy=True, cascade="all, delete-orphan")
+    orders = db.relationship('Order', backref='user', lazy=True, cascade="all, delete-orphan")
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -45,7 +46,7 @@ class Product(db.Model):
     def to_dict(self):
         active_variants = self.variants.filter_by(is_active=True).all()
         if not active_variants:
-            return None # Geef niets terug als geen enkele variant actief is
+            return None
         return {
             'id': self.id, 'name': self.name, 'description': self.description,
             'printful_product_id': self.printful_product_id,
@@ -61,7 +62,7 @@ class Variant(db.Model):
     size = db.Column(db.String(10), nullable=False)
     price = db.Column(db.Float, nullable=False)
     merch_color_type = db.Column(db.String(10), nullable=False)
-    image_urls = db.Column(db.JSON, nullable=False) # Bevat nu alle afbeeldings-URL's
+    image_urls = db.Column(db.JSON, nullable=False)
     available_regions = db.Column(db.JSON, nullable=False)
     is_active = db.Column(db.Boolean, default=False, nullable=False)
 
@@ -76,9 +77,9 @@ class Variant(db.Model):
 class PrintArea(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
-    placement = db.Column(db.String(50), nullable=False, unique=True)
+    placement = db.Column(db.String(50), nullable=False)
     name = db.Column(db.String(100), nullable=False)
-    price = db.Column(db.Float, nullable=False, default=5.0)
+    price = db.Column(db.Float, nullable=False, default=0.0)
     width = db.Column(db.Integer, nullable=False)
     height = db.Column(db.Integer, nullable=False)
     top = db.Column(db.Integer, nullable=False)
@@ -97,16 +98,13 @@ class Design(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     variant_id = db.Column(db.Integer, db.ForeignKey('variant.id'), nullable=False)
-    # --- DE FIX: Voeg een expliciete product_id kolom toe ---
     product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
     preview_url = db.Column(db.String(255), nullable=True)
     design_data = db.Column(db.JSON, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     name = db.Column(db.String(100), nullable=False, default="My Design")
-    
-    # Relaties
     variant = db.relationship('Variant')
-    product = db.relationship('Product') # Deze relatie lost de fout op
+    product = db.relationship('Product')
 
     def to_dict(self):
         return {
@@ -132,7 +130,6 @@ class Order(db.Model):
     shipping_city = db.Column(db.String(100), nullable=True)
     shipping_zip = db.Column(db.String(20), nullable=True)
     shipping_country = db.Column(db.String(100), nullable=True)
-    user = db.relationship('User', backref=db.backref('orders', lazy=True, cascade="all, delete-orphan"))
     design = db.relationship('Design', backref=db.backref('order', uselist=False))
 
     def to_dict(self):

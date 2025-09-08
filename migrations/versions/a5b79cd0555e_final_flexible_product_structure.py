@@ -1,8 +1,8 @@
 """Final flexible product structure
 
-Revision ID: b44b43bc7af0
+Revision ID: a5b79cd0555e
 Revises: 
-Create Date: 2025-09-09 00:08:06.144011
+Create Date: 2025-09-09 01:41:04.526361
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'b44b43bc7af0'
+revision = 'a5b79cd0555e'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -57,8 +57,7 @@ def upgrade():
     sa.Column('mockup_width', sa.Integer(), nullable=False),
     sa.Column('mockup_height', sa.Integer(), nullable=False),
     sa.ForeignKeyConstraint(['product_id'], ['product.id'], ),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('placement')
+    sa.PrimaryKeyConstraint('id')
     )
     op.create_table('variant',
     sa.Column('id', sa.Integer(), nullable=False),
