@@ -1,11 +1,10 @@
+# In models.py
 from extensions import db
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import func
-import json
 
 class User(db.Model):
-    """User model for storing both local and Strava accounts."""
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=True)
     password_hash = db.Column(db.String(256), nullable=True)
@@ -29,13 +28,9 @@ class User(db.Model):
 
     def to_dict(self):
         return {
-            'id': self.id,
-            'email': self.email,
-            'name': self.name,
-            'shipping_address': self.shipping_address,
-            'shipping_city': self.shipping_city,
-            'shipping_zip': self.shipping_zip,
-            'shipping_country': self.shipping_country,
+            'id': self.id, 'email': self.email, 'name': self.name,
+            'shipping_address': self.shipping_address, 'shipping_city': self.shipping_city,
+            'shipping_zip': self.shipping_zip, 'shipping_country': self.shipping_country,
             'has_strava_linked': self.strava_id is not None
         }
 
@@ -44,80 +39,81 @@ class Product(db.Model):
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=True)
     printful_product_id = db.Column(db.Integer, unique=True, nullable=False)
-    base_price = db.Column(db.Float, nullable=False, default=0.0)
-    additional_price_per_area = db.Column(db.Float, nullable=False, default=0.0)
     variants = db.relationship('Variant', backref='product', lazy='dynamic', cascade="all, delete-orphan")
+    print_areas = db.relationship('PrintArea', backref='product', lazy=True, cascade="all, delete-orphan")
 
     def to_dict(self):
+        active_variants = self.variants.filter_by(is_active=True).all()
+        if not active_variants:
+            return None # Geef niets terug als geen enkele variant actief is
         return {
-            'id': self.id,
-            'name': self.name,
-            'description': self.description,
+            'id': self.id, 'name': self.name, 'description': self.description,
             'printful_product_id': self.printful_product_id,
-            'variants': [v.to_dict() for v in self.variants.filter_by(is_active=True).all()]
+            'variants': [v.to_dict() for v in active_variants],
+            'print_areas': [p.to_dict() for p in self.print_areas]
         }
 
 class Variant(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
-    
-    # Unieke ID's van Printful
     printful_variant_id = db.Column(db.Integer, unique=True, nullable=False)
-    
-    # Producteigenschappen
     color = db.Column(db.String(50), nullable=False)
     size = db.Column(db.String(10), nullable=False)
     price = db.Column(db.Float, nullable=False)
-    
-    # Eigenschappen voor de designer
-    merch_color_type = db.Column(db.String(10), nullable=False) # 'light' of 'dark'
-    print_areas = db.Column(db.JSON, nullable=False)
-    
-    # Nieuwe velden voor beschikbaarheid en curatie
-    available_regions = db.Column(db.JSON, nullable=False) # Slaat een lijst op, bv. ["USA", "EUR"]
-    is_active = db.Column(db.Boolean, default=False, nullable=False) # Jij bepaalt of deze te koop is
+    merch_color_type = db.Column(db.String(10), nullable=False)
+    image_urls = db.Column(db.JSON, nullable=False) # Bevat nu alle afbeeldings-URL's
+    available_regions = db.Column(db.JSON, nullable=False)
+    is_active = db.Column(db.Boolean, default=False, nullable=False)
 
     def to_dict(self):
-        # Haal de eerste mockup afbeelding voor deze variant op
-        mockup_url = None
-        if self.print_areas and 'front' in self.print_areas:
-            mockup_url = self.print_areas['front'].get('image_url')
-
         return {
-            'id': self.id,
-            'printful_variant_id': self.printful_variant_id,
-            'product_name': self.product.name, # Voeg de algemene productnaam toe
-            'color': self.color,
-            'size': self.size,
-            'price': self.price,
-            'merch_color_type': self.merch_color_type,
-            'mockup_url': mockup_url,
-            'print_areas': self.print_areas
+            'id': self.id, 'printful_variant_id': self.printful_variant_id,
+            'product_name': self.product.name, 'color': self.color, 'size': self.size,
+            'price': self.price, 'merch_color_type': self.merch_color_type,
+            'image_urls': self.image_urls
+        }
+
+class PrintArea(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
+    placement = db.Column(db.String(50), nullable=False, unique=True)
+    name = db.Column(db.String(100), nullable=False)
+    price = db.Column(db.Float, nullable=False, default=5.0)
+    width = db.Column(db.Integer, nullable=False)
+    height = db.Column(db.Integer, nullable=False)
+    top = db.Column(db.Integer, nullable=False)
+    left = db.Column(db.Integer, nullable=False)
+    mockup_width = db.Column(db.Integer, nullable=False)
+    mockup_height = db.Column(db.Integer, nullable=False)
+
+    def to_dict(self):
+        return {
+            'id': self.id, 'placement': self.placement, 'name': self.name, 'price': self.price,
+            'width': self.width, 'height': self.height, 'top': self.top, 'left': self.left,
+            'mockup_width': self.mockup_width, 'mockup_height': self.mockup_height
         }
 
 class Design(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    variant_id = db.Column(db.Integer, db.ForeignKey('variant.id'), nullable=False)
+    # --- DE FIX: Voeg een expliciete product_id kolom toe ---
     product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
-    variant_id = db.Column(db.Integer, nullable=True)
     preview_url = db.Column(db.String(255), nullable=True)
     design_data = db.Column(db.JSON, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     name = db.Column(db.String(100), nullable=False, default="My Design")
-    product = db.relationship('Product')
+    
+    # Relaties
+    variant = db.relationship('Variant')
+    product = db.relationship('Product') # Deze relatie lost de fout op
 
     def to_dict(self):
-        product_info = self.product.to_dict() if self.product else None
         return {
-            'id': self.id,
-            'user_id': self.user_id,
-            'product_id': self.product_id,
-            'variant_id': self.variant_id,
-            'preview_url': self.preview_url,
-            'design_data': self.design_data,
-            'name': self.name,
-            'created_at': self.created_at.isoformat(),
-            'product': product_info
+            'id': self.id, 'user_id': self.user_id, 'variant_id': self.variant_id,
+            'preview_url': self.preview_url, 'design_data': self.design_data,
+            'name': self.name, 'created_at': self.created_at.isoformat(),
+            'variant': self.variant.to_dict() if self.variant else None
         }
 
 class Order(db.Model):
@@ -143,11 +139,7 @@ class Order(db.Model):
         design_name = self.design.name if self.design else "Unknown Design"
         product_name = self.design.product.name if self.design and self.design.product else "Unknown Product"
         return {
-            'id': self.id,
-            'order_status': self.order_status,
-            'total_price': self.total_price,
-            'order_date': self.order_date.isoformat(),
-            'design_id': self.design_id,
-            'design_name': design_name,
-            'product_name': product_name,
+            'id': self.id, 'order_status': self.order_status, 'total_price': self.total_price,
+            'order_date': self.order_date.isoformat(), 'design_id': self.design_id,
+            'design_name': design_name, 'product_name': product_name,
         }
