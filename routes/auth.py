@@ -128,7 +128,7 @@ def strava_callback():
     else:
         user = User.query.filter_by(strava_id=strava_id).first()
         if user:
-            print(f"Found existing user by Strava ID: {user.email}")
+            print(f"Found existing user by Strava ID: {user.email or user.strava_name}")
 
     if not user:
         print("No existing user found. Creating a new user for this Strava ID.")
@@ -147,7 +147,7 @@ def strava_callback():
     user.access_token = token_data.get('access_token')
     user.refresh_token = token_data.get('refresh_token')
     user.expires_at = token_data.get('expires_at')
-    
+
     db.session.commit()
 
     session['user_id'] = user.id
