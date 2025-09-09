@@ -112,7 +112,7 @@ class Design(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     variant_id = db.Column(db.Integer, db.ForeignKey('variant.id'), nullable=False)
     product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
-    preview_url = db.Column(db.String(255), nullable=True)
+    preview_urls = db.Column(db.JSON, nullable=True)
     design_data = db.Column(db.JSON, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     name = db.Column(db.String(100), nullable=False, default="My Design")
