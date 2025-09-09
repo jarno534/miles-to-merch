@@ -99,12 +99,14 @@ class PrintArea(db.Model):
     left = db.Column(db.Integer, nullable=False)
     mockup_width = db.Column(db.Integer, nullable=False)
     mockup_height = db.Column(db.Integer, nullable=False)
+    image_url = db.Column(db.String(255), nullable=True)
 
     def to_dict(self):
         return {
             'id': self.id, 'placement': self.placement, 'name': self.name, 'price': self.price,
             'width': self.width, 'height': self.height, 'top': self.top, 'left': self.left,
-            'mockup_width': self.mockup_width, 'mockup_height': self.mockup_height
+            'mockup_width': self.mockup_width, 'mockup_height': self.mockup_height,
+            'image_url': self.image_url
         }
 
 class Design(db.Model):
