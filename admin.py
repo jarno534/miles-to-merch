@@ -27,15 +27,19 @@ class MyAdminIndexView(AdminIndexView):
 
 class InspirationAdminView(SecuredModelView):
     def _image_formatter(view, context, model, name):
-        if not model.preview_url:
+        if not model.preview_urls or not isinstance(model.preview_urls, dict):
             return ''
-        file_path = f'uploads/previews/{model.preview_url}'
-        url = url_for('static', filename=file_path)
+
+        main_preview_filename = model.preview_urls.get('front')
+        if not main_preview_filename:
+            return 'Geen preview'
+
+        url = url_for('static', filename=f'uploads/previews/{main_preview_filename}')
         return Markup(f'<a href="{url}" target="_blank"><img src="{url}" width="100"></a>')
 
-    column_list = ('preview_url', 'name', 'user.email', 'product.name', 'variant.color', 'variant.size', 'created_at')
-    column_labels = {'preview_url': 'Preview'}
-    column_formatters = {'preview_url': _image_formatter}
+    column_list = ('preview_urls', 'name', 'user.email', 'product.name', 'created_at')
+    column_labels = {'preview_urls': 'Preview'}
+    column_formatters = {'preview_urls': _image_formatter}
 
     can_create = False
     can_edit = False
@@ -123,20 +127,24 @@ class PrintAreaAdminView(SecuredModelView):
     column_filters = ['product.name']
     form_columns = ('product', 'placement', 'name', 'price', 'width', 'height', 'top', 'left', 'mockup_width', 'mockup_height')
 
-
 class DesignAdminView(SecuredModelView):
     def _image_formatter(view, context, model, name):
-        if not model.preview_url: return ''
-        return Markup(f'<a href="{model.preview_url}" target="_blank"><img src="{model.preview_url}" width="100"></a>')
+        if not model.preview_urls or not isinstance(model.preview_urls, dict):
+            return ''
+        main_preview_filename = model.preview_urls.get('front')
+        if not main_preview_filename:
+            available_previews = ", ".join(model.preview_urls.keys())
+            return f'Previews: {available_previews}'
+        url = url_for('static', filename=f'uploads/previews/{main_preview_filename}')
+        return Markup(f'<a href="{url}" target="_blank"><img src="{url}" width="100"></a>')
 
-    column_list = ('preview_url', 'name', 'user.email', 'product.name', 'variant.color', 'variant.size', 'created_at')
-    column_labels = {'preview_url': 'Preview'}
-    column_formatters = {'preview_url': _image_formatter}
+    column_list = ('preview_urls', 'name', 'user.email', 'product.name', 'variant.color', 'variant.size', 'created_at')
+    column_labels = {'preview_urls': 'Preview'}
+    column_formatters = {'preview_urls': _image_formatter}
     column_searchable_list = ['name', 'user.email', 'product.name']
     column_default_sort = ('created_at', True)
     column_filters = ['user.email', 'product.name']
-    form_columns = ('name', 'user', 'product', 'variant', 'preview_url')
-    
+    form_columns = ('name', 'user', 'product', 'variant', 'preview_urls')
 
 class OrderAdminView(SecuredModelView):
     column_list = ('id', 'user.email', 'design.name', 'order_date', 'total_price', 'order_status', 'shipping_city')

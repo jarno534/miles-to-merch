@@ -579,7 +579,9 @@ export default {
 
       const designDataPayload = {};
       const previewImagesPayload = {};
-      const availablePlacements = Object.keys(this.editorProductData.print_areas);
+      const availablePlacements = Object.keys(
+        this.editorProductData.print_areas
+      );
 
       try {
         for (const placement of availablePlacements) {
@@ -588,7 +590,11 @@ export default {
 
           const canvasElement = this.$refs.editorCanvas.getCanvasElement();
           if (canvasElement) {
-            const canvas = await html2canvas(canvasElement, { backgroundColor: null, useCORS: true, scale: 2 });
+            const canvas = await html2canvas(canvasElement, {
+              backgroundColor: null,
+              useCORS: true,
+              scale: 2,
+            });
             previewImagesPayload[placement] = canvas.toDataURL("image/png");
           }
 
@@ -614,14 +620,21 @@ export default {
           name: `Design for ${this.activityData.details.name}`,
         };
 
-        const response = await axios.post(`${API_BASE_URL}/api/designs`, payload, { withCredentials: true });
+        const response = await axios.post(
+          `${API_BASE_URL}/api/designs`,
+          payload,
+          { withCredentials: true }
+        );
         const newDesign = response.data;
 
         notifySuccess("Design saved successfully!");
         this.isDirty = false;
 
         if (proceedToCheckout) {
-          this.$router.push({ name: "Checkout", params: { designId: newDesign.id } });
+          this.$router.push({
+            name: "Checkout",
+            params: { designId: newDesign.id },
+          });
         }
       } catch (error) {
         console.error("Error saving multi-part design:", error);
