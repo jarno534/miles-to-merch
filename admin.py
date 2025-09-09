@@ -54,6 +54,21 @@ class ProductAdminView(SecuredModelView):
     column_searchable_list = ['name']
     form_columns = ('name', 'description', 'printful_product_id')
 
+    @action('activate', 'Activeer Product (incl. varianten)', 'Geselecteerde producten en al hun varianten activeren?')
+    def action_activate(self, ids):
+        try:
+            products = Product.query.filter(Product.id.in_(ids)).all()
+            activated_variants_count = 0
+            for product in products:
+                for variant in product.variants:
+                    variant.is_active = True
+                    activated_variants_count += 1
+            db.session.commit()
+            flash(f"{len(products)} producten geactiveerd. Totaal {activated_variants_count} varianten op actief gezet.", 'success')
+        except Exception as e:
+            flash(f"Fout bij het activeren: {e}", 'error')
+            db.session.rollback()
+
 class VariantAdminView(SecuredModelView):
     column_list = ('product.name', 'color', 'size', 'price', 'is_active', 'merch_color_type')
     column_editable_list = ['is_active', 'price']
@@ -112,7 +127,6 @@ class DesignAdminView(SecuredModelView):
     column_searchable_list = ['name', 'user.email', 'product.name']
     column_default_sort = ('created_at', True)
     column_filters = ['user.email', 'product.name']
-    # --- TOEGEVOEGD: Oplossing voor de Internal Server Error ---
     form_columns = ('name', 'user', 'product', 'variant', 'preview_url')
 
 

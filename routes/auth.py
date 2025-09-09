@@ -111,7 +111,6 @@ def strava_callback():
         'code': auth_code,
         'grant_type': 'authorization_code'
     }
-    
     try:
         token_response = requests.post(token_url, data=payload)
         token_response.raise_for_status()
@@ -122,20 +121,27 @@ def strava_callback():
     athlete_info = token_data.get('athlete', {})
     strava_id = str(athlete_info.get('id'))
 
-    user = User.query.filter_by(strava_id=strava_id).first()
+    user = None
+    if 'user_id' in session:
+        user = User.query.get(session['user_id'])
+        print(f"User already logged in: {user.email}. Linking Strava account.")
+    else:
+        user = User.query.filter_by(strava_id=strava_id).first()
+        if user:
+            print(f"Found existing user by Strava ID: {user.email}")
 
     if not user:
+        print("No existing user found. Creating a new user for this Strava ID.")
         firstname = athlete_info.get('firstname', '')
         lastname = athlete_info.get('lastname', '')
         full_name = f"{firstname} {lastname}".strip()
-
         user = User(
             strava_id=strava_id,
-            name=full_name,
-            email=None
+            name=full_name
         )
         db.session.add(user)
 
+    user.strava_id = strava_id
     user.access_token = token_data.get('access_token')
     user.refresh_token = token_data.get('refresh_token')
     user.expires_at = token_data.get('expires_at')
@@ -143,44 +149,7 @@ def strava_callback():
     db.session.commit()
 
     session['user_id'] = user.id
+    print(f"Session set for user ID: {user.id}. Admin status: {user.is_admin}")
 
     frontend_url = current_app.config.get('FRONTEND_URL')
     return redirect(f"{frontend_url}/activities")
-
-    code = request.args.get('code')
-    if not code:
-        return 'Authentication failed: no code received', 400
-
-    token_payload = {
-        'client_id': current_app.config['STRAVA_CLIENT_ID'],
-        'client_secret': current_app.config['STRAVA_CLIENT_SECRET'],
-        'code': code,
-        'grant_type': 'authorization_code'
-    }
-    response = requests.post('https://www.strava.com/oauth/token', data=token_payload)
-    if not response.ok:
-        return 'Error exchanging code for Strava token.', 500
-    tokens = response.json()
-    
-    strava_athlete_id = tokens['athlete']['id']
-
-    if 'user_id' in session:
-        current_user = User.query.get(session['user_id'])
-        current_user.strava_id = strava_athlete_id
-        current_user.access_token = tokens['access_token']
-        current_user.refresh_token = tokens['refresh_token']
-        current_user.expires_at = tokens['expires_at']
-        db.session.commit()
-    else:
-        session['strava_guest_data'] = {
-            'strava_id': strava_athlete_id,
-            'access_token': tokens['access_token'],
-            'refresh_token': tokens['refresh_token'],
-            'expires_at': tokens['expires_at']
-        }
-    
-    next_url = session.pop('strava_redirect_next', None)
-    if next_url == 'profile':
-        return redirect(f"{current_app.config['FRONTEND_URL']}/profile")
-
-    return redirect(f"{current_app.config['FRONTEND_URL']}/activities")
