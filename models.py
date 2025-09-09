@@ -122,7 +122,7 @@ class Design(db.Model):
     def to_dict(self):
         return {
             'id': self.id, 'user_id': self.user_id, 'variant_id': self.variant_id,
-            'preview_url': self.preview_url, 'design_data': self.design_data,
+            'preview_urls': self.preview_urls, 'design_data': self.design_data,
             'name': self.name, 'created_at': self.created_at.isoformat(),
             'variant': self.variant.to_dict() if self.variant else None
         }
