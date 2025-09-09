@@ -1,17 +1,8 @@
-# Python virtual environment
 venv/
 __pycache__/
-
-# Database files
 *.db
 *.sqlite3
-
-# Instance folder (contains the database)
 /instance/
-
-# Environment variables file (if you use one)
 .env
-
-# IDE settings
 .vscode/
 .idea/
