@@ -9,6 +9,7 @@ class User(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=True)
     password_hash = db.Column(db.String(256), nullable=True)
     name = db.Column(db.String(100), nullable=True)
+    strava_name = db.Column(db.String(100), nullable=True)
     shipping_address = db.Column(db.String(200), nullable=True)
     shipping_city = db.Column(db.String(100), nullable=True)
     shipping_zip = db.Column(db.String(20), nullable=True)

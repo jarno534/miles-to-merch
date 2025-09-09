@@ -29,7 +29,9 @@ class InspirationAdminView(SecuredModelView):
     def _image_formatter(view, context, model, name):
         if not model.preview_url:
             return ''
-        return Markup(f'<img src="{model.preview_url}" width="100">')
+        file_path = f'uploads/previews/{model.preview_url}'
+        url = url_for('static', filename=file_path)
+        return Markup(f'<a href="{url}" target="_blank"><img src="{url}" width="100"></a>')
 
     column_list = ('preview_url', 'name', 'user.email', 'product.name', 'variant.color', 'variant.size', 'created_at')
     column_labels = {'preview_url': 'Preview'}
@@ -52,9 +54,9 @@ class UserAdminView(SecuredModelView):
         url = url_for('order.index_view', flt1_user_id_equals=model.id)
         return Markup(f'<a href="{url}">{count} Orders</a>')
 
-    column_list = ('email', 'name', 'is_admin', 'strava_id', 'shipping_city', 'shipping_country', 'designs', 'orders')
+    column_list = ('email', 'name', 'strava_name', 'is_admin', 'strava_id', 'shipping_city', 'shipping_country', 'designs', 'orders')
     column_formatters = {'designs': _designs_link, 'orders': _orders_link}
-    column_searchable_list = ['email', 'name', 'shipping_city', 'shipping_country']
+    column_searchable_list = ['email', 'name', 'strava_name', 'shipping_city', 'shipping_country']
     column_filters = ['is_admin', 'shipping_country']
     form_columns = ('email', 'name', 'is_admin', 'strava_id', 'shipping_address', 'shipping_city', 'shipping_zip', 'shipping_country')
     column_details_list = ('id', 'email', 'name', 'is_admin', 'strava_id', 'shipping_address', 'shipping_city', 'shipping_zip', 'shipping_country', 'designs', 'orders')
@@ -66,8 +68,17 @@ class ProductAdminView(SecuredModelView):
         url = url_for('variant.index_view', flt1_product_id_equals=model.id)
         return Markup(f'<a href="{url}">{count} Varianten</a>')
 
-    column_list = ('name', 'printful_product_id', 'variants')
-    column_formatters = {'variants': _variants_link}
+    def _print_areas_link(view, context, model, name):
+        count = len(model.print_areas)
+        if count == 0: return "0 Vlakken"
+        url = url_for('printarea.index_view', flt1_product_id_equals=model.id)
+        return Markup(f'<a href="{url}">{count} Vlakken</a>')
+
+    column_list = ('name', 'printful_product_id', 'variants', 'print_areas')
+    column_formatters = {
+        'variants': '_variants_link',
+        'print_areas': '_print_areas_link'
+    }
     column_searchable_list = ['name']
     form_columns = ('name', 'description', 'printful_product_id')
 

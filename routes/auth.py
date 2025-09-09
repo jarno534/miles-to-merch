@@ -137,11 +137,13 @@ def strava_callback():
         full_name = f"{firstname} {lastname}".strip()
         user = User(
             strava_id=strava_id,
-            name=full_name
+            name=full_name,
+            strava_name=full_name
         )
         db.session.add(user)
 
     user.strava_id = strava_id
+    user.strava_name = f"{athlete_info.get('firstname', '')} {athlete_info.get('lastname', '')}".strip()
     user.access_token = token_data.get('access_token')
     user.refresh_token = token_data.get('refresh_token')
     user.expires_at = token_data.get('expires_at')
