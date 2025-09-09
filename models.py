@@ -151,8 +151,17 @@ class Order(db.Model):
     def to_dict(self):
         design_name = self.design.name if self.design else "Unknown Design"
         product_name = self.design.product.name if self.design and self.design.product else "Unknown Product"
+
+        product_image_url = None
+        if self.design and self.design.preview_urls:
+            image_filename = self.design.preview_urls.get('front')
+            if image_filename:
+                from flask import url_for
+                product_image_url = url_for('static', filename=f'uploads/previews/{image_filename}', _external=True)
+
         return {
             'id': self.id, 'order_status': self.order_status, 'total_price': self.total_price,
             'order_date': self.order_date.isoformat(), 'design_id': self.design_id,
             'design_name': design_name, 'product_name': product_name,
+            'product_image_url': product_image_url
         }

@@ -567,7 +567,6 @@ export default {
         notifyInfo("Please create an account to save your design.");
         localStorage.setItem("unsavedDesign", JSON.stringify(this.designState));
         localStorage.setItem("proceedToCheckout", proceedToCheckout);
-
         this.$router.push({
           name: "Register",
           query: { redirect: this.$route.fullPath },
@@ -575,66 +574,60 @@ export default {
         return;
       }
 
-      const canvasElement = this.$refs.editorCanvas.getCanvasElement();
-      if (!canvasElement) {
-        notifyError("Could not find the design element to capture.");
-        return;
-      }
-
       this.deselectAll();
-      let designImageDataUrl = "";
-      try {
-        const canvas = await html2canvas(canvasElement, {
-          backgroundColor: null,
-          useCORS: true,
-          scale: 4,
-        });
-        designImageDataUrl = canvas.toDataURL("image/png");
-      } catch (error) {
-        console.error("Error generating design image:", error);
-        notifyError(
-          "Could not generate a preview of your design. Please try again."
-        );
-        return;
-      }
+      this.loading = true;
 
-      const designDataToSave = {
-        ...this.designState,
-        preview_image: designImageDataUrl,
-        activityId: this.activityId,
-      };
+      const designDataPayload = {};
+      const previewImagesPayload = {};
+      const availablePlacements = Object.keys(this.editorProductData.print_areas);
 
       try {
+        for (const placement of availablePlacements) {
+          this.activePlacement = placement;
+          await this.$nextTick();
+
+          const canvasElement = this.$refs.editorCanvas.getCanvasElement();
+          if (canvasElement) {
+            const canvas = await html2canvas(canvasElement, { backgroundColor: null, useCORS: true, scale: 2 });
+            previewImagesPayload[placement] = canvas.toDataURL("image/png");
+          }
+
+          designDataPayload[placement] = {
+            mapSettings: JSON.parse(JSON.stringify(this.mapSettings)),
+            mapElement: JSON.parse(JSON.stringify(this.mapElement)),
+            dataFields: JSON.parse(JSON.stringify(this.dataFields)),
+            graphElements: JSON.parse(JSON.stringify(this.graphElements)),
+            textBoxes: JSON.parse(JSON.stringify(this.textBoxes)),
+            photoElements: JSON.parse(JSON.stringify(this.photoElements)),
+            badgeListElement: JSON.parse(JSON.stringify(this.badgeListElement)),
+            qrCodeElements: JSON.parse(JSON.stringify(this.qrCodeElements)),
+            weatherElement: JSON.parse(JSON.stringify(this.weatherElement)),
+          };
+        }
+
         const variantId = localStorage.getItem("selectedVariantId");
         const payload = {
           product_id: parseInt(this.productId),
           variant_id: parseInt(variantId),
-          design_data: designDataToSave,
+          design_data: designDataPayload,
+          preview_images: previewImagesPayload,
           name: `Design for ${this.activityData.details.name}`,
         };
 
-        const response = await axios.post(
-          `${API_BASE_URL}/api/designs`,
-          payload,
-          {
-            withCredentials: true,
-          }
-        );
-
+        const response = await axios.post(`${API_BASE_URL}/api/designs`, payload, { withCredentials: true });
         const newDesign = response.data;
 
         notifySuccess("Design saved successfully!");
         this.isDirty = false;
 
         if (proceedToCheckout) {
-          this.$router.push({
-            name: "Checkout",
-            params: { designId: newDesign.id },
-          });
+          this.$router.push({ name: "Checkout", params: { designId: newDesign.id } });
         }
       } catch (error) {
-        console.error("Error saving design:", error);
+        console.error("Error saving multi-part design:", error);
         notifyError("Failed to save design. Please try again.");
+      } finally {
+        this.loading = false;
       }
     },
 

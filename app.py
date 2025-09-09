@@ -138,7 +138,7 @@ def sync_printful_command():
                 db_variant.available_regions = list(p_variant.get('availability_regions', {}).keys())
 
                 mockup_url = p_variant.get('image')
-                db_variant.image_urls = mockup_url
+                db_variant.image_urls = {'default': mockup_url}
 
                 db_variant.print_areas = {
                     "front": {"name": "Front", "image_url": mockup_url}
