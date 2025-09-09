@@ -58,7 +58,7 @@ class Product(db.Model):
             'id': self.id, 'name': self.name, 'description': self.description,
             'printful_product_id': self.printful_product_id,
             'variants': [v.to_dict() for v in active_variants],
-            'print_areas': [p.to_dict() for p in self.print_areas]
+            'print_areas': {p.placement: p.to_dict() for p in self.print_areas}
         }
 
     def __str__(self):

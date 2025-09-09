@@ -123,7 +123,6 @@ class VariantAdminView(SecuredModelView):
 
 class PrintAreaAdminView(SecuredModelView):
     column_list = ('product.name', 'name', 'placement', 'price', 'width', 'height')
-    column_editable_list = ['price', 'width', 'height', 'image_url']
     column_filters = ['product.name']
     form_columns = ('product', 'placement', 'name', 'price', 'width', 'height', 'top', 'left', 'mockup_width', 'mockup_height', 'image_url')
 
