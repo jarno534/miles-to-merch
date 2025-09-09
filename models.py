@@ -38,6 +38,9 @@ class User(db.Model):
     def __str__(self):
         return self.email or f"User ID: {self.id}"
 
+    def __repr__(self):
+        return f'<User {self.email}>'
+
 class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
@@ -59,6 +62,9 @@ class Product(db.Model):
 
     def __str__(self):
         return self.name
+    
+    def __repr__(self):
+        return f'<Product {self.name}>'
 
 class Variant(db.Model):
     id = db.Column(db.Integer, primary_key=True)

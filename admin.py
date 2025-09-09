@@ -25,124 +25,123 @@ class MyAdminIndexView(AdminIndexView):
     def inaccessible_callback(self, name, **kwargs):
         return redirect('/')
 
+class InspirationAdminView(SecuredModelView):
+    def _image_formatter(view, context, model, name):
+        if not model.preview_url:
+            return ''
+        return Markup(f'<img src="{model.preview_url}" width="100">')
+
+    column_list = ('preview_url', 'name', 'user.email', 'product.name', 'variant.color', 'variant.size', 'created_at')
+    column_labels = {'preview_url': 'Preview'}
+    column_formatters = {'preview_url': _image_formatter}
+
+    can_create = False
+    can_edit = False
+    can_delete = False
+
 class UserAdminView(SecuredModelView):
     def _designs_link(view, context, model, name):
-        design_count = len(model.designs)
-        if design_count == 0:
-            return "0 Designs"
+        count = len(model.designs)
+        if count == 0: return "0 Designs"
         url = url_for('design.index_view', flt1_user_id_equals=model.id)
-        return Markup(f'<a href="{url}">{design_count} Designs</a>')
+        return Markup(f'<a href="{url}">{count} Designs</a>')
 
     def _orders_link(view, context, model, name):
-        order_count = len(model.orders)
-        if order_count == 0:
-            return "0 Orders"
+        count = len(model.orders)
+        if count == 0: return "0 Orders"
         url = url_for('order.index_view', flt1_user_id_equals=model.id)
-        return Markup(f'<a href="{url}">{order_count} Orders</a>')
+        return Markup(f'<a href="{url}">{count} Orders</a>')
 
-    column_list = ('email', 'name', 'is_admin', 'designs', 'orders')
-    column_formatters = {
-        'designs': _designs_link,
-        'orders': _orders_link
-    }
-    column_searchable_list = ['email', 'name']
-    column_filters = ['is_admin']
-    form_columns = ('email', 'name', 'is_admin', 'shipping_address', 'shipping_city', 'shipping_zip', 'shipping_country')
+    column_list = ('email', 'name', 'is_admin', 'strava_id', 'shipping_city', 'shipping_country', 'designs', 'orders')
+    column_formatters = {'designs': _designs_link, 'orders': _orders_link}
+    column_searchable_list = ['email', 'name', 'shipping_city', 'shipping_country']
+    column_filters = ['is_admin', 'shipping_country']
+    form_columns = ('email', 'name', 'is_admin', 'strava_id', 'shipping_address', 'shipping_city', 'shipping_zip', 'shipping_country')
+    column_details_list = ('id', 'email', 'name', 'is_admin', 'strava_id', 'shipping_address', 'shipping_city', 'shipping_zip', 'shipping_country', 'designs', 'orders')
 
 class ProductAdminView(SecuredModelView):
-    column_list = ('name', 'printful_product_id')
+    def _variants_link(view, context, model, name):
+        count = model.variants.count()
+        if count == 0: return "0 Varianten"
+        url = url_for('variant.index_view', flt1_product_id_equals=model.id)
+        return Markup(f'<a href="{url}">{count} Varianten</a>')
+
+    column_list = ('name', 'printful_product_id', 'variants')
+    column_formatters = {'variants': _variants_link}
     column_searchable_list = ['name']
     form_columns = ('name', 'description', 'printful_product_id')
 
-    @action('activate', 'Activeer Product (incl. varianten)', 'Geselecteerde producten en al hun varianten activeren?')
-    def action_activate(self, ids):
-        try:
-            products = Product.query.filter(Product.id.in_(ids)).all()
-            activated_variants_count = 0
-            for product in products:
-                for variant in product.variants:
-                    variant.is_active = True
-                    activated_variants_count += 1
-            db.session.commit()
-            flash(f"{len(products)} producten geactiveerd. Totaal {activated_variants_count} varianten op actief gezet.", 'success')
-        except Exception as e:
-            flash(f"Fout bij het activeren: {e}", 'error')
-            db.session.rollback()
-
 class VariantAdminView(SecuredModelView):
-    column_list = ('product.name', 'color', 'size', 'price', 'is_active', 'merch_color_type')
+    column_list = ('product.name', 'color', 'size', 'price', 'is_active', 'merch_color_type', 'printful_variant_id')
     column_editable_list = ['is_active', 'price']
     column_filters = ['is_active', 'color', 'size', 'product.name', 'merch_color_type']
     column_searchable_list = ['color', 'size', 'product.name']
     page_size = 100
 
-    @action('activate', 'Activeer op site', 'Geselecteerde varianten activeren?')
+    @action('activate', 'Activeer', 'Geselecteerde varianten activeren?')
     def action_activate(self, ids):
         try:
-            variants = Variant.query.filter(Variant.id.in_(ids)).all()
-            for v in variants: v.is_active = True
-            db.session.commit()
-            flash(f"{len(variants)} varianten succesvol geactiveerd.", 'success')
+            variants = Variant.query.filter(Variant.id.in_(ids)); variants.update({'is_active': True}); db.session.commit()
+            flash(f"{len(ids)} varianten geactiveerd.", 'success')
         except Exception as e: flash(f"Fout: {e}", 'error')
 
-    @action('deactivate', 'Deactiveer op site', 'Geselecteerde varianten deactiveren?')
+    @action('deactivate', 'Deactiveer', 'Geselecteerde varianten deactiveren?')
     def action_deactivate(self, ids):
         try:
-            variants = Variant.query.filter(Variant.id.in_(ids)).all()
-            for v in variants: v.is_active = False
-            db.session.commit()
-            flash(f"{len(variants)} varianten succesvol gedeactiveerd.", 'success')
+            variants = Variant.query.filter(Variant.id.in_(ids)); variants.update({'is_active': False}); db.session.commit()
+            flash(f"{len(ids)} varianten gedeactiveerd.", 'success')
         except Exception as e: flash(f"Fout: {e}", 'error')
 
     @action('set_dark_type', 'Stel in als \'donker\'', 'Geselecteerde varianten instellen als \'donker\'?')
     def action_set_dark_type(self, ids):
         try:
-            variants = Variant.query.filter(Variant.id.in_(ids)).all()
-            for v in variants: v.merch_color_type = 'dark'
-            db.session.commit()
-            flash(f"{len(variants)} varianten ingesteld als 'donker'.", 'success')
-        except Exception as e:
-            flash(f"Kon type niet instellen: {e}", 'error')
-            db.session.rollback()
+            variants = Variant.query.filter(Variant.id.in_(ids)); variants.update({'merch_color_type': 'dark'}); db.session.commit()
+            flash(f"{len(ids)} varianten ingesteld als 'donker'.", 'success')
+        except Exception as e: flash(f"Fout: {e}", 'error')
 
     @action('set_light_type', 'Stel in als \'licht\'', 'Geselecteerde varianten instellen als \'licht\'?')
     def action_set_light_type(self, ids):
         try:
-            variants = Variant.query.filter(Variant.id.in_(ids)).all()
-            for v in variants: v.merch_color_type = 'light'
-            db.session.commit()
-            flash(f"{len(variants)} varianten ingesteld als 'licht'.", 'success')
-        except Exception as e:
-            flash(f"Kon type niet instellen: {e}", 'error')
-            db.session.rollback()
+            variants = Variant.query.filter(Variant.id.in_(ids)); variants.update({'merch_color_type': 'light'}); db.session.commit()
+            flash(f"{len(ids)} varianten ingesteld als 'licht'.", 'success')
+        except Exception as e: flash(f"Fout: {e}", 'error')
 
 class PrintAreaAdminView(SecuredModelView):
-    column_list = ('product.name', 'name', 'placement', 'price', 'width', 'height', 'top', 'left')
-    column_editable_list = ['price', 'width', 'height', 'top', 'left']
+    column_list = ('product.name', 'name', 'placement', 'price', 'width', 'height')
+    column_editable_list = ['price', 'width', 'height']
     column_filters = ['product.name']
     form_columns = ('product', 'placement', 'name', 'price', 'width', 'height', 'top', 'left', 'mockup_width', 'mockup_height')
 
+
 class DesignAdminView(SecuredModelView):
-    column_list = ('id', 'name', 'user.email', 'product.name', 'created_at')
+    def _image_formatter(view, context, model, name):
+        if not model.preview_url: return ''
+        return Markup(f'<a href="{model.preview_url}" target="_blank"><img src="{model.preview_url}" width="100"></a>')
+
+    column_list = ('preview_url', 'name', 'user.email', 'product.name', 'variant.color', 'variant.size', 'created_at')
+    column_labels = {'preview_url': 'Preview'}
+    column_formatters = {'preview_url': _image_formatter}
     column_searchable_list = ['name', 'user.email', 'product.name']
     column_default_sort = ('created_at', True)
     column_filters = ['user.email', 'product.name']
     form_columns = ('name', 'user', 'product', 'variant', 'preview_url')
-
+    
 
 class OrderAdminView(SecuredModelView):
-    column_list = ('id', 'user.email', 'order_date', 'total_price', 'order_status')
-    column_filters = ['order_status', 'user.email']
+    column_list = ('id', 'user.email', 'design.name', 'order_date', 'total_price', 'order_status', 'shipping_city')
+    column_filters = ['order_status', 'user.email', 'shipping_city']
     column_default_sort = ('order_date', True)
     form_columns = ('user', 'design', 'quantity', 'order_status', 'total_price', 'shipping_name', 'shipping_address', 'shipping_city', 'shipping_zip', 'shipping_country')
+
 
 def setup_admin(app):
     admin = Admin(app, name='Miles-to-Merch Admin', template_mode='bootstrap3', index_view=MyAdminIndexView())
 
+    admin.add_view(InspirationAdminView(Design, db.session, name='Inspiratie', endpoint='inspiration', category='Tools'))
+
     admin.add_view(UserAdminView(User, db.session, category='Gebruikers'))
     admin.add_view(DesignAdminView(Design, db.session, category='Gebruikers'))
     admin.add_view(OrderAdminView(Order, db.session, category='Gebruikers'))
-
     admin.add_view(ProductAdminView(Product, db.session, category='Producten'))
     admin.add_view(VariantAdminView(Variant, db.session, category='Producten'))
     admin.add_view(PrintAreaAdminView(PrintArea, db.session, category='Producten'))
