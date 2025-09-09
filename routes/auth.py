@@ -20,9 +20,14 @@ def register():
         if User.query.filter_by(email=data['email']).first():
             return jsonify({'error': 'Email address already in use'}), 409
 
-        user = User(email=data['email'])
+        user = User(
+            email=data['email'],
+            name=data.get('name')
+        )
         print("2. User object created in memory.")
-        
+
+        user.strava_name = data.get('name', data['email'])
+
         user.set_password(data['password'])
         print("3. Password has been set.")
 
@@ -36,7 +41,7 @@ def register():
 
         db.session.add(user)
         print("5. User added to session.")
-        
+
         print("6. About to commit to database...")
         db.session.commit()
         print("7. Commit successful!")
