@@ -134,17 +134,18 @@ def sync_printful_command():
                 db_variant.size = p_variant.get('size')
                 db_variant.price = float(p_variant.get('price'))
                 db_variant.merch_color_type = get_color_type_from_name(p_variant.get('color'))
-                
+
                 db_variant.available_regions = list(p_variant.get('availability_regions', {}).keys())
 
                 mockup_url = p_variant.get('image')
+                db_variant.image_urls = mockup_url
 
                 db_variant.print_areas = {
                     "front": {"name": "Front", "image_url": mockup_url}
                 }
 
                 variants_processed += 1
-            
+
             db.session.commit()
             print(f"{variants_processed} varianten verwerkt voor {db_product.name}.")
 
