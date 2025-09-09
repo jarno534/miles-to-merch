@@ -35,6 +35,9 @@ class User(db.Model):
             'has_strava_linked': self.strava_id is not None
         }
 
+    def __str__(self):
+        return self.email or f"User ID: {self.id}"
+
 class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
@@ -53,6 +56,9 @@ class Product(db.Model):
             'variants': [v.to_dict() for v in active_variants],
             'print_areas': [p.to_dict() for p in self.print_areas]
         }
+
+    def __str__(self):
+        return self.name
 
 class Variant(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -113,6 +119,9 @@ class Design(db.Model):
             'name': self.name, 'created_at': self.created_at.isoformat(),
             'variant': self.variant.to_dict() if self.variant else None
         }
+
+    def __str__(self):
+        return self.name or f"Design ID: {self.id}"
 
 class Order(db.Model):
     id = db.Column(db.Integer, primary_key=True)
