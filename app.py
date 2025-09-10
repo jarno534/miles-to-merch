@@ -27,6 +27,9 @@ def create_app(config_class=Config):
     @app.route('/')
     def index():
         return jsonify({'message': 'Welcome!'})
+    @app.route('/debug-session')
+    def debug_session():
+        return jsonify(session)
     return app
 
 app = create_app()
