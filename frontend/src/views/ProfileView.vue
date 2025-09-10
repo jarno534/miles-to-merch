@@ -184,11 +184,10 @@
 
 <script>
 import { settings } from "../settings";
-import axios from "axios";
+import axios from '@/apiConfig.js';
 import { auth } from "../auth";
 import { notifySuccess, notifyError } from "../notifications";
 import SpinnerComponent from "@/components/SpinnerComponent.vue";
-import API_BASE_URL from "@/apiConfig";
 
 export default {
   name: "ProfileView",

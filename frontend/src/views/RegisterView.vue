@@ -22,9 +22,8 @@
 </template>
 
 <script>
-import axios from "axios";
+import axios from '@/apiConfig.js';
 import { auth } from "../auth";
-import API_BASE_URL from "@/apiConfig";
 
 export default {
   name: "RegisterView",

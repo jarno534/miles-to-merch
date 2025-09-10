@@ -83,7 +83,7 @@
 </template>
 
 <script>
-import axios from "axios";
+import axios from '@/apiConfig.js';
 import EditorSidebar from "@/components/EditorSidebar.vue";
 import EditorCanvas from "@/components/EditorCanvas.vue";
 import EditorTools from "@/components/EditorTools.vue";
@@ -93,7 +93,6 @@ import { settings } from "../settings";
 import html2canvas from "html2canvas";
 import { notifySuccess, notifyError, notifyInfo } from "../notifications";
 import UnitsModal from "@/components/UnitsModal.vue";
-import API_BASE_URL from "@/apiConfig";
 
 export default {
   name: "DesignView",

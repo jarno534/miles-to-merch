@@ -1,6 +1,5 @@
 import { reactive } from "vue";
-import axios from "axios";
-import API_BASE_URL from "@/apiConfig";
+import axios from '@/apiConfig.js';
 
 export const auth = reactive({
   isLoggedIn: false,

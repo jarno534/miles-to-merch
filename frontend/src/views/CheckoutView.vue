@@ -71,9 +71,8 @@
 </template>
 
 <script>
-import axios from "axios";
+import axios from '@/apiConfig.js';
 import { notifyError } from "../notifications";
-import API_BASE_URL from "@/apiConfig";
 import { loadStripe } from "@stripe/stripe-js";
 
 export default {

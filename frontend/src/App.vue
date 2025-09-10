@@ -28,9 +28,8 @@
 
 <script>
 import { auth } from "./auth";
-import axios from "axios";
+import axios from '@/apiConfig.js';
 import { useRouter } from "vue-router";
-import API_BASE_URL from "@/apiConfig";
 import { notifySuccess, notifyError } from "./notifications";
 
 export default {
@@ -39,14 +38,10 @@ export default {
 
     const logout = async () => {
       try {
-        await axios.post(
-          `${API_BASE_URL}/auth/logout`,
-          {},
-          { withCredentials: true }
-        );
+        await axios.post('/auth/logout'); 
         auth.isLoggedIn = false;
         auth.user = null;
-        router.push("/");
+        router.push('/');
       } catch (error) {
         console.error("Logout failed:", error);
       }
