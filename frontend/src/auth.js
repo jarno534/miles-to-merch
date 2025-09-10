@@ -1,5 +1,5 @@
 import { reactive } from "vue";
-import axios from '@/apiConfig.js';
+import axios from "@/apiConfig.js";
 
 export const auth = reactive({
   isLoggedIn: false,
@@ -8,7 +8,7 @@ export const auth = reactive({
 
   async checkAuthStatus() {
     try {
-      const response = await axios.get(`${API_BASE_URL}/auth/status`, {
+      const response = await axios.get("/auth/status", {
         withCredentials: true,
       });
       if (response.data.logged_in) {

@@ -184,7 +184,7 @@
 
 <script>
 import { settings } from "../settings";
-import axios from '@/apiConfig.js';
+import axios from "@/apiConfig.js";
 import { auth } from "../auth";
 import { notifySuccess, notifyError } from "../notifications";
 import SpinnerComponent from "@/components/SpinnerComponent.vue";
@@ -220,7 +220,7 @@ export default {
     },
 
     stravaLinkUrl() {
-      return `${API_BASE_URL}/auth/login/strava?next=profile`;
+      return "/auth/login/strava?next=profile";
     },
 
     passwordMismatch() {
@@ -259,11 +259,10 @@ export default {
     async fetchProfile() {
       this.loading = true;
       try {
-        const response = await axios.get(`${API_BASE_URL}/api/profile`, {
+        const response = await axios.get("/api/profile", {
           withCredentials: true,
         });
         this.user = response.data;
-        // NIEUW: Bepaal of dit een nieuw account is dat een wachtwoord nodig heeft
         this.isFinalizingAccount = !this.user.email;
       } catch (error) {
         console.error("Failed to fetch profile:", error);
@@ -287,12 +286,12 @@ export default {
           payload.password = this.password;
         }
 
-        await axios.put(`${API_BASE_URL}/api/profile`, payload, {
+        await axios.put("/api/profile", payload, {
           withCredentials: true,
         });
 
         notifySuccess("Profile updated successfully!");
-        this.isFinalizingAccount = false; // Na succes is het account gefinaliseerd
+        this.isFinalizingAccount = false;
         setTimeout(() => (this.successMessage = ""), 3000);
       } catch (error) {
         console.error("Failed to update profile:", error);
@@ -320,7 +319,7 @@ export default {
       }
       try {
         await axios.post(
-          `${API_BASE_URL}/api/profile/delete`,
+          "/api/profile/delete",
           { password: this.passwordForDelete },
           { withCredentials: true }
         );

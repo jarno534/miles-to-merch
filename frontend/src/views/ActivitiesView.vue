@@ -29,7 +29,7 @@
 </template>
 
 <script>
-import axios from '@/apiConfig.js';
+import axios from "@/apiConfig.js";
 import SpinnerComponent from "@/components/SpinnerComponent.vue";
 
 export default {
@@ -46,7 +46,7 @@ export default {
     this.productId = localStorage.getItem("selectedProductId");
 
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/activities`, {
+      const response = await axios.get("/api/activities", {
         withCredentials: true,
       });
       this.activities = response.data;

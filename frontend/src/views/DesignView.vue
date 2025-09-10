@@ -83,7 +83,7 @@
 </template>
 
 <script>
-import axios from '@/apiConfig.js';
+import axios from "@/apiConfig.js";
 import EditorSidebar from "@/components/EditorSidebar.vue";
 import EditorCanvas from "@/components/EditorCanvas.vue";
 import EditorTools from "@/components/EditorTools.vue";
@@ -619,11 +619,9 @@ export default {
           name: `Design for ${this.activityData.details.name}`,
         };
 
-        const response = await axios.post(
-          `${API_BASE_URL}/api/designs`,
-          payload,
-          { withCredentials: true }
-        );
+        const response = await axios.post("/api/designs", payload, {
+          withCredentials: true,
+        });
         const newDesign = response.data;
 
         notifySuccess("Design saved successfully!");
@@ -1435,10 +1433,10 @@ export default {
 
     try {
       const [productRes, activityRes] = await Promise.all([
-        axios.get(`${API_BASE_URL}/api/products/${this.productId}`, {
+        axios.get("/api/products/${this.productId}", {
           withCredentials: true,
         }),
-        axios.get(`${API_BASE_URL}/api/activities/${this.activityId}`, {
+        axios.get("/api/activities/${this.activityId}", {
           withCredentials: true,
         }),
       ]);
@@ -1461,12 +1459,11 @@ export default {
       }
 
       if (this.activityData && this.activityData.details.athlete.id) {
-        const athleteId = this.activityData.details.athlete.id;
         try {
           const statsRes = await axios.get(
-            `${API_BASE_URL}/api/athlete-stats/${athleteId}`,
-            { withCredentials: true }
+            `/api/athlete-stats/${this.activityData.details.athlete.id}`
           );
+          this.athleteStats = statsRes.data;
           this.athleteStats = statsRes.data;
           this.analyzeAchievements();
         } catch (statsError) {
@@ -1478,10 +1475,9 @@ export default {
       const unsavedDesign = localStorage.getItem("autosavedDesign");
 
       if (designIdToLoad) {
-        const res = await axios.get(
-          `${API_BASE_URL}/api/designs/${designIdToLoad}`,
-          { withCredentials: true }
-        );
+        const res = await axios.get("/api/designs/${designIdToLoad}", {
+          withCredentials: true,
+        });
         this.loadState(res.data.design_data);
       } else if (unsavedDesign) {
         this.loadState(JSON.parse(unsavedDesign));

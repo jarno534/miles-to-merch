@@ -23,7 +23,7 @@
 </template>
 
 <script>
-import axios from '@/apiConfig.js';
+import axios from "@/apiConfig.js";
 import { auth } from "../auth";
 
 export default {
@@ -40,7 +40,7 @@ export default {
       this.error = null;
       try {
         const response = await axios.post(
-          `${API_BASE_URL}/auth/login`,
+          "/auth/login",
           {
             email: this.email,
             password: this.password,

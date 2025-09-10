@@ -28,7 +28,7 @@
 
 <script>
 import { auth } from "./auth";
-import axios from '@/apiConfig.js';
+import axios from "@/apiConfig.js";
 import { useRouter } from "vue-router";
 import { notifySuccess, notifyError } from "./notifications";
 
@@ -38,10 +38,10 @@ export default {
 
     const logout = async () => {
       try {
-        await axios.post('/auth/logout'); 
+        await axios.post("/auth/logout");
         auth.isLoggedIn = false;
         auth.user = null;
-        router.push('/');
+        router.push("/");
       } catch (error) {
         console.error("Logout failed:", error);
       }
@@ -89,11 +89,9 @@ export default {
                 name: `Recovered Design for ${designState.activityId}`,
               };
 
-              const response = await axios.post(
-                `${API_BASE_URL}/api/designs`,
-                payload,
-                { withCredentials: true }
-              );
+              const response = await axios.post("/api/designs", payload, {
+                withCredentials: true,
+              });
               const newDesign = response.data;
               notifySuccess(
                 "Your unsaved design has been successfully recovered!"
@@ -103,7 +101,7 @@ export default {
                 localStorage.getItem("proceedToCheckout") === "true";
               localStorage.removeItem("unsavedDesign");
               localStorage.removeItem("proceedToCheckout");
-              localStorage.removeItem("selectedProductId"); // Deze is nu overbodig, maar ruimen we toch op
+              localStorage.removeItem("selectedProductId");
 
               if (proceed) {
                 this.$router.push({

@@ -53,7 +53,6 @@
 <script>
 import { auth } from "../auth";
 import gpxParser from "gpxparser";
-import API_BASE_URL from "@/apiConfig";
 
 export default {
   name: "StartDesignView",
@@ -75,7 +74,7 @@ export default {
       if (auth.isLoggedIn && auth.user.has_strava_linked) {
         this.$router.push({ name: "Activities" });
       } else {
-        window.location.href = `${API_BASE_URL}/auth/login/strava`;
+        window.location.href = "/auth/login/strava";
       }
     },
 
@@ -123,7 +122,6 @@ export default {
       reader.readAsText(file);
     },
 
-    // In de 'methods' van StartDesignView.vue
     formatGpxData(gpx, gpxText) {
       const track = gpx.tracks[0];
       const points = track.points;
@@ -149,8 +147,7 @@ export default {
       let totalDistance = 0;
       let validPointsCount = 0;
 
-      // --- 1. Definieer een drempel en initialiseer movingTime ---
-      const MIN_SPEED_THRESHOLD = 0.5; // m/s (alles trager dan 1.8 km/u is pauze)
+      const MIN_SPEED_THRESHOLD = 0.5;
       let movingTime = 0;
 
       for (let i = 0; i < points.length; i++) {
@@ -215,17 +212,16 @@ export default {
       if (velocity_smooth.length > 0)
         streams.velocity_smooth = { data: velocity_smooth };
 
-      // --- 3. Gebruik de correcte movingTime voor de gemiddelde snelheid ---
       const averageSpeed = movingTime > 0 ? totalDistance / movingTime : 0;
 
       const details = {
         name: track.name || "GPX Activity",
         distance: totalDistance,
-        moving_time: movingTime, // Nu correct!
-        elapsed_time: elapsedTime, // Ook correct
+        moving_time: movingTime,
+        elapsed_time: elapsedTime,
         total_elevation_gain: track.elevation?.pos || 0,
         elev_high: track.elevation?.max || 0,
-        average_speed: averageSpeed, // Nu correct!
+        average_speed: averageSpeed,
         max_speed: Math.max(...(velocity_smooth || [0])),
         average_heartrate:
           heartrate.length > 0

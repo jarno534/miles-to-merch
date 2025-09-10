@@ -36,7 +36,7 @@
 </template>
 
 <script>
-import axios from '@/apiConfig.js';
+import axios from "@/apiConfig.js";
 import { notifySuccess, notifyError } from "../notifications";
 import SpinnerComponent from "@/components/SpinnerComponent.vue";
 
@@ -62,7 +62,7 @@ export default {
     async fetchDesigns() {
       this.loading = true;
       try {
-        const response = await axios.get(`${API_BASE_URL}/api/designs`, {
+        const response = await axios.get("/api/designs", {
           withCredentials: true,
         });
         this.designs = response.data;
@@ -108,9 +108,8 @@ export default {
         return;
       }
       try {
-        await axios.delete(`${API_BASE_URL}/api/designs/${designId}`, {
-          withCredentials: true,
-        });
+        await axios.delete(`/api/designs/${designId}`);
+        notifySuccess("Design deleted successfully.");
         notifySuccess("Design deleted successfully.");
         await this.fetchDesigns();
       } catch (error) {
@@ -124,8 +123,8 @@ export default {
       if (newName && newName.trim() !== "" && newName.trim() !== design.name) {
         try {
           const response = await axios.put(
-            `${API_BASE_URL}/api/designs/${design.id}`,
-            { name: newName.trim() }, // Send the new name in the request body
+            "/api/designs/${design.id}",
+            { name: newName.trim() },
             { withCredentials: true }
           );
           const index = this.designs.findIndex((d) => d.id === design.id);

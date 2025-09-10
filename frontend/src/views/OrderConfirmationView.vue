@@ -51,7 +51,7 @@
 </template>
 
 <script>
-import axios from '@/apiConfig.js';
+import axios from "@/apiConfig.js";
 import SpinnerComponent from "@/components/SpinnerComponent.vue";
 
 export default {
@@ -72,7 +72,7 @@ export default {
   async created() {
     try {
       const response = await axios.get(
-        `${API_BASE_URL}/api/order-by-session/${this.sessionId}`,
+        "/api/order-by-session/${this.sessionId}",
         {
           withCredentials: true,
         }

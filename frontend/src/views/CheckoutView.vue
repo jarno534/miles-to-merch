@@ -71,7 +71,7 @@
 </template>
 
 <script>
-import axios from '@/apiConfig.js';
+import axios from "@/apiConfig.js";
 import { notifyError } from "../notifications";
 import { loadStripe } from "@stripe/stripe-js";
 
@@ -118,10 +118,10 @@ export default {
     this.stripePromise = loadStripe(process.env.VUE_APP_STRIPE_PUBLISHABLE_KEY);
     try {
       const [designRes, profileRes] = await Promise.all([
-        axios.get(`${API_BASE_URL}/api/designs/${this.designId}`, {
+        axios.get("/api/designs/${this.designId}", {
           withCredentials: true,
         }),
-        axios.get(`${API_BASE_URL}/api/profile`, { withCredentials: true }),
+        axios.get("/api/profile", { withCredentials: true }),
       ]);
       this.design = designRes.data;
       this.user = profileRes.data;
@@ -140,7 +140,7 @@ export default {
       this.isPlacingOrder = true;
       try {
         const response = await axios.post(
-          `${API_BASE_URL}/api/create-checkout-session`,
+          "/api/create-checkout-session",
           {
             design_id: this.design.id,
             quantity: this.quantity,

@@ -70,7 +70,7 @@
 </template>
 
 <script>
-import axios from '@/apiConfig.js';
+import axios from "@/apiConfig.js";
 import SpinnerComponent from "@/components/SpinnerComponent.vue";
 
 export default {
@@ -131,9 +131,7 @@ export default {
   },
   async created() {
     try {
-      const response = await axios.get(
-        `${API_BASE_URL}/api/products/${this.productId}`
-      );
+      const response = await axios.get("/api/products/${this.productId}");
       this.product = response.data;
     } catch (error) {
       console.error("Error fetching product data:", error);
