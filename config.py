@@ -4,10 +4,13 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 load_dotenv()
 
 class Config:
-    SECRET_KEY = os.environ.get('SECRET_KEY') or os.urandom(24)
+    SECRET_KEY = os.environ.get('SECRET_KEY')
+    if not SECRET_KEY:
+        raise ValueError("Geen SECRET_KEY ingesteld! Voeg deze toe aan de environment variables.")
+    # ----------------------------------------------------
+    
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
         'sqlite:///' + os.path.join(basedir, 'instance', 'site.db')
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # Strava API-instellingen
     STRAVA_CLIENT_ID = os.environ.get('STRAVA_CLIENT_ID')
