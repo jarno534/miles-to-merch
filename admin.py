@@ -2,7 +2,7 @@ from flask_admin import Admin, AdminIndexView
 from flask_admin.contrib.sqla import ModelView
 from flask import session, redirect, url_for
 from models import db, User, Product, Variant, PrintArea, Design, Order
-from wtforms.fields import BooleanField
+from wtforms.fields import BooleanField, TextAreaField
 from flask_admin.actions import action
 from flask import flash
 from markupsafe import Markup
@@ -83,6 +83,9 @@ class ProductAdminView(SecuredModelView):
 class VariantAdminView(SecuredModelView):
     column_list = ('product.name', 'color', 'size', 'price', 'is_active', 'merch_color_type', 'image_urls')
     form_columns = ('product', 'color', 'size', 'price', 'is_active', 'merch_color_type', 'image_urls')
+    form_overrides = {
+            'image_urls': TextAreaField
+        }
     column_editable_list = ['is_active', 'price']
     column_filters = ['is_active', 'color', 'size', 'product.name', 'merch_color_type']
     column_searchable_list = ['color', 'size', 'product.name']
