@@ -87,7 +87,7 @@ class VariantForm(FlaskForm):
 
 class VariantAdminView(SecuredModelView):
     form = VariantForm
-    column_list = ('product.name', 'color', 'size', 'price', 'is_active', 'merch_color_type', 'image_urls')
+    column_list = ('product.name', 'color', 'size', 'price', 'is_active', 'merch_color_type')
     form_columns = ('product', 'color', 'size', 'price', 'is_active', 'merch_color_type', 'image_urls')
     column_editable_list = ['is_active', 'price']
     column_filters = ['is_active', 'color', 'size', 'product.name', 'merch_color_type']
@@ -95,12 +95,10 @@ class VariantAdminView(SecuredModelView):
     page_size = 100
 
     def on_form_prefill(self, form, id):
-        """Voordat het formulier wordt getoond: converteer de dictionary naar een JSON-string."""
         if isinstance(form.image_urls.data, dict):
             form.image_urls.data = json.dumps(form.image_urls.data, indent=2)
 
     def on_model_change(self, form, model, is_created):
-        """Voordat het model wordt opgeslagen: converteer de JSON-string terug naar een dictionary."""
         try:
             model.image_urls = json.loads(form.image_urls.data)
         except (json.JSONDecodeError, TypeError):
@@ -137,6 +135,7 @@ class VariantAdminView(SecuredModelView):
 
 class PrintAreaAdminView(SecuredModelView):
     column_list = ('product.name', 'name', 'placement', 'price', 'width', 'height')
+    column_editable_list = ['price', 'width', 'height', 'top', 'left', 'mockup_width', 'mockup_height']
     column_filters = ['product.name']
     form_columns = ('product', 'placement', 'name', 'price', 'width', 'height', 'top', 'left', 'mockup_width', 'mockup_height', 'image_url')
 
