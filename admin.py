@@ -9,12 +9,20 @@ from markupsafe import Markup
 
 class SecuredModelView(ModelView):
     def is_accessible(self):
+        print(f"--- ADMIN CHECK GESTART ---")
         if 'user_id' in session:
-            user = User.query.get(session['user_id'])
-            return user and user.is_admin
+            user_id = session['user_id']
+            print(f"Sessie gevonden met user_id: {user_id}")
+            user = User.query.get(user_id)
+            if user:
+                print(f"Gebruiker gevonden: {user.email}, is_admin: {user.is_admin} (type: {type(user.is_admin)})") # Nieuw
+                return user.is_admin
+            else:
+                print(f"GEEN gebruiker gevonden voor id: {user_id}")
+        else:
+            print("GEEN user_id in sessie gevonden.")
+        print(f"--- TOEGANG GEWEIGERD ---")
         return False
-    def inaccessible_callback(self, name, **kwargs):
-        return redirect('/')
 
 class MyAdminIndexView(AdminIndexView):
     def is_accessible(self):
