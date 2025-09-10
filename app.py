@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, session
 from dotenv import load_dotenv
 from config import Config
 from models import User, Product, Variant, PrintArea, Design, Order
