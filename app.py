@@ -29,7 +29,11 @@ def create_app(config_class=Config):
         return jsonify({'message': 'Welcome!'})
     @app.route('/debug-session')
     def debug_session():
-        return jsonify(session)
+        try:
+            session_content = str(dict(session))
+            return session_content
+        except Exception as e:
+            return f"Fout bij het lezen van de sessie: {e}"
     return app
 
 app = create_app()

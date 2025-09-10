@@ -123,7 +123,7 @@ export default {
       if (newName && newName.trim() !== "" && newName.trim() !== design.name) {
         try {
           const response = await axios.put(
-            "/api/designs/${design.id}",
+            `/api/designs/${design.id}`,
             { name: newName.trim() },
             { withCredentials: true }
           );
