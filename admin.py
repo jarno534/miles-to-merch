@@ -9,20 +9,12 @@ from markupsafe import Markup
 
 class SecuredModelView(ModelView):
     def is_accessible(self):
-        print(f"--- ADMIN CHECK GESTART ---")
         if 'user_id' in session:
-            user_id = session['user_id']
-            print(f"Sessie gevonden met user_id: {user_id}")
-            user = User.query.get(user_id)
-            if user:
-                print(f"Gebruiker gevonden: {user.email}, is_admin: {user.is_admin} (type: {type(user.is_admin)})") # Nieuw
-                return user.is_admin
-            else:
-                print(f"GEEN gebruiker gevonden voor id: {user_id}")
-        else:
-            print("GEEN user_id in sessie gevonden.")
-        print(f"--- TOEGANG GEWEIGERD ---")
+            user = User.query.get(session['user_id'])
+            return user and user.is_admin
         return False
+    def inaccessible_callback(self, name, **kwargs):
+        return redirect('/')
 
 class MyAdminIndexView(AdminIndexView):
     def is_accessible(self):
@@ -37,18 +29,14 @@ class InspirationAdminView(SecuredModelView):
     def _image_formatter(view, context, model, name):
         if not model.preview_urls or not isinstance(model.preview_urls, dict):
             return ''
-
         main_preview_filename = model.preview_urls.get('front')
         if not main_preview_filename:
             return 'Geen preview'
-
         url = url_for('static', filename=f'uploads/previews/{main_preview_filename}')
         return Markup(f'<a href="{url}" target="_blank"><img src="{url}" width="100"></a>')
-
     column_list = ('preview_urls', 'name', 'user.email', 'product.name', 'created_at')
     column_labels = {'preview_urls': 'Preview'}
     column_formatters = {'preview_urls': _image_formatter}
-
     can_create = False
     can_edit = False
     can_delete = False
@@ -59,13 +47,11 @@ class UserAdminView(SecuredModelView):
         if count == 0: return "0 Designs"
         url = url_for('design.index_view', flt1_user_id_equals=model.id)
         return Markup(f'<a href="{url}">{count} Designs</a>')
-
     def _orders_link(view, context, model, name):
         count = len(model.orders)
         if count == 0: return "0 Orders"
         url = url_for('order.index_view', flt1_user_id_equals=model.id)
         return Markup(f'<a href="{url}">{count} Orders</a>')
-
     column_list = ('email', 'name', 'strava_name', 'is_admin', 'strava_id', 'shipping_city', 'shipping_country', 'designs', 'orders')
     column_formatters = {'designs': _designs_link, 'orders': _orders_link}
     column_searchable_list = ['email', 'name', 'strava_name', 'shipping_city', 'shipping_country']
@@ -95,7 +81,8 @@ class ProductAdminView(SecuredModelView):
     form_columns = ('name', 'description', 'printful_product_id')
 
 class VariantAdminView(SecuredModelView):
-    column_list = ('product.name', 'color', 'size', 'price', 'is_active', 'merch_color_type', 'printful_variant_id')
+    column_list = ('product.name', 'color', 'size', 'price', 'is_active', 'merch_color_type', 'image_urls')
+    form_columns = ('product', 'color', 'size', 'price', 'is_active', 'merch_color_type', 'image_urls')
     column_editable_list = ['is_active', 'price']
     column_filters = ['is_active', 'color', 'size', 'product.name', 'merch_color_type']
     column_searchable_list = ['color', 'size', 'product.name']
@@ -159,12 +146,9 @@ class OrderAdminView(SecuredModelView):
     column_default_sort = ('order_date', True)
     form_columns = ('user', 'design', 'quantity', 'order_status', 'total_price', 'shipping_name', 'shipping_address', 'shipping_city', 'shipping_zip', 'shipping_country')
 
-
 def setup_admin(app):
     admin = Admin(app, name='Miles-to-Merch Admin', template_mode='bootstrap3', index_view=MyAdminIndexView())
-
     admin.add_view(InspirationAdminView(Design, db.session, name='Inspiratie', endpoint='inspiration', category='Tools'))
-
     admin.add_view(UserAdminView(User, db.session, category='Gebruikers'))
     admin.add_view(DesignAdminView(Design, db.session, category='Gebruikers'))
     admin.add_view(OrderAdminView(Order, db.session, category='Gebruikers'))
