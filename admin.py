@@ -6,6 +6,7 @@ from wtforms.fields import BooleanField, TextAreaField
 from flask_admin.actions import action
 from flask import flash
 from markupsafe import Markup
+import json
 
 class SecuredModelView(ModelView):
     def is_accessible(self):
