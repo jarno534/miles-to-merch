@@ -84,6 +84,11 @@ export default {
     },
 
     handleGpxUpload(event) {
+      if (!this.productId) {
+        console.error("StartDesign.vue: No productId found. Halting GPX upload.");
+        this.gpxError = "A product ID is missing. Cannot proceed.";
+        return;
+      }
       const file = event.target.files[0];
       if (!file) return;
 
@@ -105,17 +110,21 @@ export default {
               "GPX file must contain a track with at least two points."
             );
           }
+
           const activityData = this.formatGpxData(gpx, gpxText);
           console.log("Stap 1: Finaal activityData object:", activityData);
+
           const gpxSessionKey = `gpx_${Date.now()}`;
           localStorage.setItem(gpxSessionKey, JSON.stringify(activityData));
-          this.routePayload = {
+
+          // HIER WAS DE FOUT: 'const' ontbrak. Nu is het correct.
+          const routePayload = {
             name: "Design",
             params: { productId: this.productId, activityId: "gpx" },
             query: { gpx_key: gpxSessionKey },
           };
-          console.log("Navigeren naar 'Design' met payload:", routePayload); // <-- LOG 4
           this.$router.push(routePayload);
+
         } catch (error) {
           console.error("GPX Parsing Error Details:", error);
           this.gpxError =
