@@ -13,7 +13,9 @@
         @click="selectProduct(product.id)"
       >
         <img
-          :src="product.variants[0]?.mockup_url"
+          :src="
+            product.product_image_url || product.variants[0]?.image_urls?.mockup
+          "
           :alt="product.name"
           class="product-image"
         />

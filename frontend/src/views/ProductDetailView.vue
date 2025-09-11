@@ -92,27 +92,43 @@ export default {
   },
   computed: {
     displayImageUrl() {
-      const variantToShow =
-        this.variantsForSelectedColor[0] || this.product?.variants[0];
-      return variantToShow?.mockup_url || "";
+      if (this.selectedColor) {
+        const variantForColor = this.product.variants.find(
+          (v) => v.color === this.selectedColor
+        );
+        return (
+          variantForColor?.image_urls?.mockup ||
+          this.product.product_image_url ||
+          ""
+        );
+      }
+      return (
+        this.product.product_image_url ||
+        this.product.variants[0]?.image_urls?.mockup ||
+        ""
+      );
     },
+
     displayPrice() {
       if (this.selectedVariant) {
         return this.selectedVariant.price;
       }
       return this.product?.variants[0]?.price || 0;
     },
+
     availableColors() {
       if (!this.product?.variants) return [];
       const colors = this.product.variants.map((v) => v.color);
       return [...new Set(colors)];
     },
+
     availableSizes() {
       if (!this.selectedColor || !this.product?.variants) return [];
       return this.product.variants
         .filter((v) => v.color === this.selectedColor)
         .map((v) => v.size);
     },
+
     selectedVariant() {
       if (!this.selectedColor || !this.selectedSize || !this.product?.variants)
         return null;
@@ -122,6 +138,7 @@ export default {
         ) || null
       );
     },
+
     variantsForSelectedColor() {
       if (!this.selectedColor || !this.product?.variants) return [];
       return this.product.variants.filter(
@@ -129,6 +146,7 @@ export default {
       );
     },
   },
+
   async created() {
     try {
       const response = await axios.get("/api/products/${this.productId}");
@@ -140,6 +158,7 @@ export default {
       this.loading = false;
     }
   },
+
   methods: {
     selectColor(colorName) {
       this.selectedColor = colorName;
@@ -147,13 +166,16 @@ export default {
         this.selectedSize = null;
       }
     },
+
     selectSize(size) {
       this.selectedSize = size;
     },
+
     getColorSwatchUrl(colorName) {
       const variant = this.product.variants.find((v) => v.color === colorName);
-      return variant?.mockup_url || "";
+      return variant?.image_urls?.mockup || "";
     },
+
     startDesigning() {
       if (!this.selectedVariant) return;
       localStorage.setItem("selectedVariantId", this.selectedVariant.id);
@@ -176,6 +198,7 @@ export default {
   min-height: 100vh;
   background-color: #f0f2f5;
 }
+
 .product-container {
   display: flex;
   flex-direction: row;
@@ -187,25 +210,30 @@ export default {
   border-radius: 15px;
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
 }
+
 .product-image-container {
   flex: 1;
   position: sticky;
   top: 40px;
 }
+
 .product-image {
   width: 100%;
   border-radius: 10px;
 }
+
 .product-info-container {
   flex: 1;
   display: flex;
   flex-direction: column;
 }
+
 .product-name {
   font-size: 2.5rem;
   margin: 0 0 10px;
   text-align: left;
 }
+
 .product-price {
   font-size: 1.8rem;
   font-weight: bold;
@@ -213,6 +241,7 @@ export default {
   margin-bottom: 20px;
   text-align: left;
 }
+
 .product-description {
   font-size: 1.1rem;
   line-height: 1.6;
@@ -220,25 +249,30 @@ export default {
   margin-bottom: 30px;
   text-align: left;
 }
+
 .options-section {
   margin-bottom: 25px;
   text-align: left;
 }
+
 .options-section h2 {
   font-size: 1.2rem;
   margin: 0 0 10px;
   color: #333;
 }
+
 .selected-option {
   font-weight: normal;
   color: #666;
 }
+
 .color-swatches,
 .size-buttons {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
 }
+
 .color-swatch {
   width: 40px;
   height: 40px;
@@ -249,16 +283,19 @@ export default {
   padding: 2px;
   background-color: #fff;
 }
+
 .color-swatch img {
   width: 100%;
   height: 100%;
   border-radius: 50%;
   object-fit: cover;
 }
+
 .color-swatch.active {
   border-color: #fc4c02;
   transform: scale(1.15);
 }
+
 .size-button {
   padding: 8px 15px;
   border: 2px solid #ccc;
@@ -267,11 +304,13 @@ export default {
   cursor: pointer;
   font-weight: bold;
 }
+
 .size-button.active {
   background-color: #fc4c02;
   color: white;
   border-color: #fc4c02;
 }
+
 .design-button {
   background-color: #28a745;
   color: white;
@@ -284,13 +323,16 @@ export default {
   transition: background-color 0.2s;
   margin-top: auto;
 }
+
 .design-button:hover:not(:disabled) {
   background-color: #218838;
 }
+
 .design-button:disabled {
   background-color: #ccc;
   cursor: not-allowed;
 }
+
 .selection-prompt {
   text-align: center;
   color: #888;

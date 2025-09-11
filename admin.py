@@ -27,6 +27,12 @@ class MyAdminIndexView(AdminIndexView):
     def inaccessible_callback(self, name, **kwargs):
         return redirect('/')
 
+class ProductForm(FlaskForm):
+    product_image_url = StringField('Hero Image URL')
+
+class VariantForm(FlaskForm):
+    image_urls = TextAreaField('Image URLs (JSON format)')
+
 class InspirationAdminView(SecuredModelView):
     def _image_formatter(view, context, model, name):
         if not model.preview_urls or not isinstance(model.preview_urls, dict):
@@ -62,6 +68,7 @@ class UserAdminView(SecuredModelView):
     column_details_list = ('id', 'email', 'name', 'is_admin', 'strava_id', 'shipping_address', 'shipping_city', 'shipping_zip', 'shipping_country', 'designs', 'orders')
 
 class ProductAdminView(SecuredModelView):
+    form = ProductForm
     def _variants_link(view, context, model, name):
         url = url_for('variant.index_view', flt1_product_id_equals=model.id)
         return Markup(f'<a href="{url}">Bekijk Varianten</a>')
@@ -78,10 +85,7 @@ class ProductAdminView(SecuredModelView):
     }
 
     column_searchable_list = ['name']
-    form_columns = ('name', 'description', 'printful_product_id')
-
-class VariantForm(FlaskForm):
-    image_urls = TextAreaField('Image URLs (JSON format)')
+    form_columns = ('name', 'description', 'printful_product_id', 'product_image_url')
 
 class VariantAdminView(SecuredModelView):
     form = VariantForm

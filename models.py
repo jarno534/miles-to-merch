@@ -47,6 +47,7 @@ class Product(db.Model):
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=True)
     printful_product_id = db.Column(db.Integer, unique=True, nullable=False)
+    product_image_url = db.Column(db.String(255), nullable=True)
     variants = db.relationship('Variant', backref='product', lazy='dynamic', cascade="all, delete-orphan")
     print_areas = db.relationship('PrintArea', backref='product', lazy=True, cascade="all, delete-orphan")
 
@@ -57,6 +58,7 @@ class Product(db.Model):
         return {
             'id': self.id, 'name': self.name, 'description': self.description,
             'printful_product_id': self.printful_product_id,
+            'product_image_url': self.product_image_url,
             'variants': [v.to_dict() for v in active_variants],
             'print_areas': {p.placement: p.to_dict() for p in self.print_areas}
         }
@@ -75,7 +77,7 @@ class Variant(db.Model):
     size = db.Column(db.String(10), nullable=False)
     price = db.Column(db.Float, nullable=False)
     merch_color_type = db.Column(db.String(10), nullable=False)
-    image_urls = db.Column(db.JSON, nullable=False)
+    image_urls = db.Column(db.JSON, nullable=True, default=lambda: {"mockup": None, "template": None})
     available_regions = db.Column(db.JSON, nullable=False)
     is_active = db.Column(db.Boolean, default=False, nullable=False)
 

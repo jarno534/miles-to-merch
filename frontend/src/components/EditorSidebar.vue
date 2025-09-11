@@ -7,12 +7,16 @@
         v-if="editorProductData && editorProductData.print_areas"
       >
         <button
-          v-for="(area, key) in editorProductData.print_areas"
+          v-for="(area, key) in availablePlacements"
           :key="key"
           @click="$emit('update:activePlacement', key)"
           :class="{ active: activePlacement === key }"
+          class="placement-button"
         >
-          {{ area.name || key }}
+          <span>{{ area.name || key }}</span>
+          <span v-if="area.price > 0" class="price-tag"
+            >+€{{ area.price.toFixed(2) }}</span
+          >
         </button>
       </div>
     </div>
@@ -1350,6 +1354,25 @@ export default {
   },
 
   computed: {
+    availablePlacements() {
+      if (!this.editorProductData || !this.editorProductData.print_areas) {
+        return {};
+      }
+      const placements = this.editorProductData.print_areas;
+      const sortedKeys = Object.keys(placements).sort((a, b) => {
+        const priceA = placements[a].price || 0;
+        const priceB = placements[b].price || 0;
+        if (a === "front" && priceA === 0) return -1;
+        if (b === "front" && priceB === 0) return 1;
+        return priceA - priceB;
+      });
+      const sortedPlacements = {};
+      for (const key of sortedKeys) {
+        sortedPlacements[key] = placements[key];
+      }
+      return sortedPlacements;
+    },
+
     isStravaActivity() {
       return this.activityData?.details?.source !== "gpx";
     },
@@ -1663,6 +1686,23 @@ export default {
 </script>
 
 <style scoped>
+.price-tag {
+  background-color: #28a745;
+  color: white;
+  font-size: 0.8em;
+  font-weight: bold;
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-left: 8px;
+}
+
+.placement-button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
 .placement-controls-wrapper {
   margin-bottom: 20px;
   padding-bottom: 20px;
@@ -1671,6 +1711,7 @@ export default {
 
 .placement-controls {
   display: flex;
+  flex-direction: column;
   gap: 10px;
   background-color: #f0f2f5;
   padding: 5px;

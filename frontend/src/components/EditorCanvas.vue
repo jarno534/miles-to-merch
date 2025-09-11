@@ -10,10 +10,22 @@
       <p>Loading activity data...</p>
     </div>
 
-    <div v-else class="tshirt-mockup" :style="mockupStyle">
+    <div
+      v-else
+      class="mockup-container"
+      :style="{ aspectRatio: backgroundAspectRatio }"
+    >
+      <img
+        v-if="backgroundImageUrl"
+        :src="backgroundImageUrl"
+        alt="Product template"
+        class="background-image"
+        ref="backgroundImage"
+        @load="onImageLoad"
+      />
       <div
         class="design-area-container"
-        ref="tshirtMockup"
+        ref="designArea"
         :style="designAreaStyle"
         @click="$emit('deselect-all')"
         :class="{ 'is-active': selection.type }"
@@ -352,14 +364,14 @@ const gradientColorSchemes = {
 
 export default {
   name: "EditorCanvas",
-
   components: { GraphComponent },
-
   props: {
     printAreaData: {
       type: Object,
       default: null,
     },
+
+    selectedVariant: Object,
 
     selection: {
       type: Object,
@@ -393,6 +405,7 @@ export default {
 
   data() {
     return {
+      backgroundAspectRatio: "1/1",
       routeBounds: null,
       routeCenter: null,
       currentTileLayer: null,
@@ -416,39 +429,26 @@ export default {
   },
 
   computed: {
-    mockupStyle() {
-      if (this.printAreaData && this.printAreaData.image_url) {
-        return {
-          backgroundImage: `url(${this.printAreaData.image_url})`,
-        };
-      }
-      return {
-        backgroundColor: "#e0e0e0",
-      };
+    backgroundImageUrl() {
+      return this.selectedVariant?.image_urls?.template || null;
     },
 
     designAreaStyle() {
-      if (!this.printAreaData) {
-        return { display: "none" };
-      }
+      if (!this.printAreaData) return { display: "none" };
       const { width, height, top, left, mockup_width, mockup_height } =
         this.printAreaData;
-
       if (!width || !height || !mockup_width || !mockup_height) {
-        return { width: "45%", height: "60%" };
+        return { width: "45%", height: "60%" }; // Fallback
       }
-
       const widthPercent = (width / mockup_width) * 100;
       const heightPercent = (height / mockup_height) * 100;
       const topPercent = (top / mockup_height) * 100;
       const leftPercent = (left / mockup_width) * 100;
-
       return {
         width: `${widthPercent}%`,
         height: `${heightPercent}%`,
         top: `${topPercent}%`,
         left: `${leftPercent}%`,
-        transform: "none",
       };
     },
 
@@ -571,15 +571,6 @@ export default {
   },
 
   watch: {
-    // --- CONTROLE 2: LOGGEN WANNEER DE DATA BINNENKOMT ---
-    printAreaData: {
-      handler(newValue) {
-        console.log("Prop 'printAreaData' is bijgewerkt:", newValue);
-      },
-      immediate: true, // Log de waarde direct bij het laden
-      deep: true,
-    },
-
     loading(isLoading, wasLoading) {
       if (wasLoading && !isLoading) {
         this.$nextTick(() => {
@@ -633,6 +624,13 @@ export default {
   },
 
   methods: {
+    onImageLoad(event) {
+      const img = event.target;
+      if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+        this.backgroundAspectRatio = `${img.naturalWidth} / ${img.naturalHeight}`;
+      }
+    },
+
     logQrTextUpdate(qrCode) {
       const payload = {
         element: qrCode,
@@ -1330,6 +1328,26 @@ export default {
   min-height: 0;
 }
 
+.mockup-container {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.background-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  z-index: 0;
+}
+
 .loading-message {
   text-align: center;
   color: #666;
@@ -1361,12 +1379,28 @@ export default {
   position: absolute;
   transform-style: preserve-3d;
   overflow: hidden;
-  transition: background-color 0.2s, box-shadow 0.2s;
+  z-index: 1;
+  background-color: rgba(0, 123, 255, 0.1);
+  border: 1px dashed rgba(0, 123, 255, 0.5);
 }
 
 .design-area-container.is-active {
   background-color: rgba(0, 0, 0, 0.05);
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1) inset;
+}
+
+.design-area-item {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  border: 2px dashed transparent;
+  cursor: grab;
+  will-change: transform, width, height;
+}
+
+.design-area-item.selected {
+  border-color: #4287f5;
+  background-color: rgba(66, 135, 245, 0.1);
 }
 
 .design-area {
