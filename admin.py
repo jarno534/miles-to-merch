@@ -95,15 +95,16 @@ class VariantAdminView(SecuredModelView):
     page_size = 100
 
     def on_form_prefill(self, form, id):
-        if isinstance(form.image_urls.data, dict):
+        if hasattr(form, 'image_urls') and isinstance(form.image_urls.data, dict):
             form.image_urls.data = json.dumps(form.image_urls.data, indent=2)
 
     def on_model_change(self, form, model, is_created):
-        try:
-            model.image_urls = json.loads(form.image_urls.data)
-        except (json.JSONDecodeError, TypeError):
-            model.image_urls = {}
-            flash('Ongeldig JSON-formaat in Image URLs. Wijziging niet opgeslagen.', 'error')
+        if hasattr(form, 'image_urls'):
+            try:
+                model.image_urls = json.loads(form.image_urls.data)
+            except (json.JSONDecodeError, TypeError):
+                model.image_urls = {}
+                flash('Ongeldig JSON-formaat in Image URLs. Wijziging niet opgeslagen.', 'error')
 
     @action('activate', 'Activeer', 'Geselecteerde varianten activeren?')
     def action_activate(self, ids):
