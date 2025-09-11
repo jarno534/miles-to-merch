@@ -119,7 +119,6 @@ export default {
           const gpxSessionKey = `gpx_${Date.now()}`;
           localStorage.setItem(gpxSessionKey, JSON.stringify(activityData));
 
-          // HIER WAS DE FOUT: 'const' ontbrak. Nu is het correct.
           const routePayload = {
             name: "Design",
             params: { productId: this.productId, activityId: "gpx" },

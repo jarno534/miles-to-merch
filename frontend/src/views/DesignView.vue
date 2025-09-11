@@ -1433,10 +1433,10 @@ export default {
 
     try {
       const [productRes, activityRes] = await Promise.all([
-        axios.get("/api/products/${this.productId}", {
+        axios.get(`/api/products/${this.productId}`, {
           withCredentials: true,
         }),
-        axios.get("/api/activities/${this.activityId}", {
+        axios.get(`/api/activities/${this.activityId}`, {
           withCredentials: true,
         }),
       ]);
@@ -1475,7 +1475,7 @@ export default {
       const unsavedDesign = localStorage.getItem("autosavedDesign");
 
       if (designIdToLoad) {
-        const res = await axios.get("/api/designs/${designIdToLoad}", {
+        const res = await axios.get(`/api/designs/${designIdToLoad}`, {
           withCredentials: true,
         });
         this.loadState(res.data.design_data);
