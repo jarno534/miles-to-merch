@@ -85,7 +85,9 @@ export default {
 
     handleGpxUpload(event) {
       if (!this.productId) {
-        console.error("StartDesign.vue: No productId found. Halting GPX upload.");
+        console.error(
+          "StartDesign.vue: No productId found. Halting GPX upload."
+        );
         this.gpxError = "A product ID is missing. Cannot proceed.";
         return;
       }
@@ -124,7 +126,6 @@ export default {
             query: { gpx_key: gpxSessionKey },
           };
           this.$router.push(routePayload);
-
         } catch (error) {
           console.error("GPX Parsing Error Details:", error);
           this.gpxError =
