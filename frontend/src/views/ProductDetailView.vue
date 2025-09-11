@@ -118,7 +118,7 @@ export default {
       const colors = {};
       this.product.variants.forEach((v) => {
         if (!colors[v.color]) {
-          colors[v.color] = { name: v.color, code: v.color_code || '#ffffff' };
+          colors[v.color] = { name: v.color, code: v.color_code || "#ffffff" };
         }
       });
       return Object.values(colors);
