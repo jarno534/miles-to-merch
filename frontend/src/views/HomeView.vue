@@ -67,7 +67,7 @@ export default {
 
     async fetchProducts() {
       try {
-        const response = await axios.get(`/api/products/${this.productId}`);
+        const response = await axios.get("/api/products");
         this.products = response.data;
       } catch (error) {
         console.error("Error fetching products:", error);

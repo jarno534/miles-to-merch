@@ -149,7 +149,7 @@ export default {
 
   async created() {
     try {
-      const response = await axios.get("/api/products/${this.productId}");
+      const response = await axios.get(`/api/products/${this.productId}`);
       this.product = response.data;
     } catch (error) {
       console.error("Error fetching product data:", error);
