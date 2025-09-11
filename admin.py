@@ -89,7 +89,7 @@ class VariantAdminView(SecuredModelView):
     form = VariantForm
     column_list = ('product.name', 'color', 'size', 'price', 'is_active', 'merch_color_type')
     form_columns = ('product', 'color', 'size', 'price', 'is_active', 'merch_color_type', 'image_urls')
-    column_editable_list = ['is_active', 'price']
+    column_editable_list = ['is_active', 'price', 'merch_color_type']
     column_filters = ['is_active', 'color', 'size', 'product.name', 'merch_color_type']
     column_searchable_list = ['color', 'size', 'product.name']
     page_size = 100
@@ -135,7 +135,7 @@ class VariantAdminView(SecuredModelView):
         except Exception as e: flash(f"Fout: {e}", 'error')
 
 class PrintAreaAdminView(SecuredModelView):
-    column_list = ('product.name', 'name', 'placement', 'price', 'width', 'height')
+    column_list = ('product.name', 'name', 'placement', 'price', 'width', 'height', 'top', 'left', 'mockup_width', 'mockup_height')
     column_editable_list = ['price', 'width', 'height', 'top', 'left', 'mockup_width', 'mockup_height']
     column_filters = ['product.name']
     form_columns = ('product', 'placement', 'name', 'price', 'width', 'height', 'top', 'left', 'mockup_width', 'mockup_height', 'image_url')
