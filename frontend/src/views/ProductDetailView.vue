@@ -99,6 +99,8 @@ export default {
   },
   computed: {
     displayImageUrl() {
+      // Als er een kleur is geselecteerd, zoek de eerste variant met die kleur
+      // die een geldige mockup URL heeft. Dit is de belangrijkste logica.
       if (this.selectedColor && this.product?.variants) {
         const variantWithMockup = this.product.variants.find(
           (v) => v.color === this.selectedColor && v.image_urls?.mockup
@@ -107,9 +109,13 @@ export default {
           return variantWithMockup.image_urls.mockup;
         }
       }
+      
+      // Als er (nog) geen kleur is geselecteerd, toon dan de algemene "hero" afbeelding.
       if (this.product?.product_image_url) {
         return this.product.product_image_url;
       }
+
+      // Als er geen hero image is, toon dan als fallback de mockup van de allereerste variant.
       return this.product?.variants?.[0]?.image_urls?.mockup || "";
     },
 
@@ -157,7 +163,6 @@ export default {
       this.product = response.data;
     } catch (error) {
       console.error("Error fetching product data:", error);
-      this.$router.push("/");
     } finally {
       this.loading = false;
     }
