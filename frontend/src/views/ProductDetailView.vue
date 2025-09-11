@@ -66,13 +66,6 @@
         </p>
       </div>
     </div>
-  <div class="debug-section">
-    <h3>Debug Informatie</h3>
-    <pre><b>Geselecteerde Kleur:</b> {{ selectedColor }}</pre>
-    <pre><b>Geselecteerde Maat:</b> {{ selectedSize }}</pre>
-    <pre><b>Geselecteerde Variant:</b> {{ JSON.stringify(selectedVariant, null, 2) }}</pre>
-    <pre><b>Te tonen Afbeelding URL:</b> {{ displayImageUrl }}</pre>
-  </div>
   </div>
 </template>
 
@@ -99,14 +92,14 @@ export default {
   },
   computed: {
     displayImageUrl() {
-      // Als er een kleur is geselecteerd, zoek de eerste variant met die kleur
-      // die een geldige mockup URL heeft. Dit is de belangrijkste logica.
+      // Als er een kleur is geselecteerd, zoek dan de variant en gebruik diens 'image' veld.
       if (this.selectedColor && this.product?.variants) {
-        const variantWithMockup = this.product.variants.find(
-          (v) => v.color === this.selectedColor && v.image_urls?.mockup
+        const variantForColor = this.product.variants.find(
+          (v) => v.color === this.selectedColor
         );
-        if (variantWithMockup) {
-          return variantWithMockup.image_urls.mockup;
+        // We gebruiken nu 'image' in plaats van 'image_urls.mockup'
+        if (variantForColor && variantForColor.image) {
+          return variantForColor.image;
         }
       }
       
@@ -115,8 +108,8 @@ export default {
         return this.product.product_image_url;
       }
 
-      // Als er geen hero image is, toon dan als fallback de mockup van de allereerste variant.
-      return this.product?.variants?.[0]?.image_urls?.mockup || "";
+      // Als fallback, toon de afbeelding van de allereerste variant.
+      return this.product?.variants?.[0]?.image || "";
     },
 
     displayPrice() {
@@ -182,7 +175,7 @@ export default {
 
     getColorSwatchUrl(colorName) {
       const variant = this.product.variants.find((v) => v.color === colorName);
-      return variant?.image_urls?.mockup || "";
+      return variant?.image || "";
     },
 
     startDesigning() {
@@ -199,36 +192,6 @@ export default {
 </script>
 
 <style scoped>
-.debug-section {
-  position: fixed;
-  bottom: 10px;
-  left: 10px;
-  background-color: #fff;
-  border: 2px solid #f00;
-  padding: 15px;
-  border-radius: 8px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-  z-index: 9999;
-  text-align: left;
-  max-width: 400px;
-  max-height: 400px;
-  overflow: auto;
-}
-
-.debug-section h3 {
-  margin-top: 0;
-  color: #f00;
-}
-
-.debug-section pre {
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  margin: 5px 0;
-  background-color: #f5f5f5;
-  padding: 5px;
-  border-radius: 4px;
-}
-
 .product-detail-page {
   display: flex;
   justify-content: center;
