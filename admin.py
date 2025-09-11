@@ -2,7 +2,7 @@ from flask_admin import Admin, AdminIndexView
 from flask_admin.contrib.sqla import ModelView
 from flask import session, redirect, url_for
 from models import db, User, Product, Variant, PrintArea, Design, Order
-from wtforms.fields import BooleanField, TextAreaField
+from wtforms.fields import BooleanField, TextAreaField, StringField
 from flask_admin.actions import action
 from flask import flash
 from markupsafe import Markup
@@ -77,7 +77,7 @@ class ProductAdminView(SecuredModelView):
         url = url_for('printarea.index_view', flt1_product_id_equals=model.id)
         return Markup(f'<a href="{url}">Bekijk Printvlakken</a>')
 
-    column_list = ('name', 'printful_product_id', 'variants', 'print_areas')
+    column_list = ('name', 'printful_product_id', 'product_image_url', 'variants', 'print_areas')
 
     column_formatters = {
         'variants': _variants_link,
