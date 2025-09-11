@@ -1432,22 +1432,29 @@ export default {
     }
 
     try {
-      const [productRes, activityRes] = await Promise.all([
+      let activityRes;
+      if (this.activityId === "gpx" && window.tempGpxData) {
+        activityRes = { data: window.tempGpxData };
+        delete window.tempGpxData;
+      }
+
+      const [productRes, finalActivityRes] = await Promise.all([
         axios.get(`/api/products/${this.productId}`, {
           withCredentials: true,
         }),
-        axios.get(`/api/activities/${this.activityId}`, {
-          withCredentials: true,
-        }),
+        activityRes ||
+          axios.get(`/api/activities/${this.activityId}`, {
+            withCredentials: true,
+          }),
       ]);
 
       this.editorProductData = productRes.data;
-      this.activityData = activityRes.data;
+      this.activityData = finalActivityRes.data;
       this.dataFields.labelColor = this.getInitialElementColor("label");
       this.dataFields.valueColor = this.getInitialElementColor("main");
       this.badgeListElement.textColor = this.getInitialElementColor("main");
       this.weatherElement.textColor = this.getInitialElementColor("main");
-      this.activityPhotos = activityRes.data.photos || [];
+      this.activityPhotos = finalActivityRes.data.photos || [];
 
       if (this.editorProductData.print_areas) {
         const availablePlacements = Object.keys(
@@ -1458,12 +1465,11 @@ export default {
         }
       }
 
-      if (this.activityData && this.activityData.details.athlete.id) {
+      if (this.activityData && this.activityData.details.athlete?.id) {
         try {
           const statsRes = await axios.get(
             `/api/athlete-stats/${this.activityData.details.athlete.id}`
           );
-          this.athleteStats = statsRes.data;
           this.athleteStats = statsRes.data;
           this.analyzeAchievements();
         } catch (statsError) {
