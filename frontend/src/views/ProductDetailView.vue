@@ -24,8 +24,8 @@
               class="color-swatch"
               :class="{ active: selectedColor === color.name }"
               @click="selectColor(color.name)"
-              :title="color"
-              :style="{ backgroundColor: color.code }
+              :title="color.name"
+              :style="{ backgroundColor: color.code }"
             ></button>
           </div>
         </div>
