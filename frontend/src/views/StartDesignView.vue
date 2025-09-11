@@ -86,9 +86,6 @@ export default {
 
     handleGpxUpload(event) {
       if (!this.productId) {
-        console.error(
-          "StartDesign.vue: No productId found. Halting GPX upload."
-        );
         this.gpxError = "A product ID is missing. Cannot proceed.";
         return;
       }
@@ -115,21 +112,18 @@ export default {
           }
 
           const activityData = this.formatGpxData(gpx, gpxText);
-          console.log("Stap 1: Finaal activityData object:", activityData);
 
-          const gpxSessionKey = `gpx_${Date.now()}`;
-          localStorage.setItem(gpxSessionKey, JSON.stringify(activityData));
+          window.tempGpxData = activityData;
 
           const routePayload = {
             name: "Design",
             params: { productId: this.productId, activityId: "gpx" },
-            query: { gpx_key: gpxSessionKey },
           };
           this.$router.push(routePayload);
         } catch (error) {
           console.error("GPX Parsing Error Details:", error);
           this.gpxError =
-            "Failed to process GPX file. It might be invalid or missing track data.";
+            "Failed to process GPX file. It might be invalid, missing track data, or too large.";
         }
       };
       reader.readAsText(file);
