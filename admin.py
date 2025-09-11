@@ -62,19 +62,15 @@ class UserAdminView(SecuredModelView):
     column_details_list = ('id', 'email', 'name', 'is_admin', 'strava_id', 'shipping_address', 'shipping_city', 'shipping_zip', 'shipping_country', 'designs', 'orders')
 
 class ProductAdminView(SecuredModelView):
-    def _variants_link(view, context, model, name):
-        url = url_for('variant.index_view', flt1_product_id_equals=model.id)
-        return Markup(f'<a href="{url}">Bekijk Varianten</a>')
+    # --- TIJDELIJKE DEBUGGING VERSIE ---
+    # We tonen alleen de allersimpelste velden om de fout te isoleren.
+    # Alle kolommen die data uit andere tabellen halen ('variants', 'print_areas') zijn verwijderd.
+    column_list = ('name', 'printful_product_id')
 
-    def _print_areas_link(view, context, model, name):
-        url = url_for('printarea.index_view', flt1_product_id_equals=model.id)
-        return Markup(f'<a href="{url}">Bekijk Printvlakken</a>')
+    # De formatters die de links maakten, zijn ook tijdelijk verwijderd.
+    # column_formatters = { ... }
 
-    column_list = ('name', 'printful_product_id', 'variants', 'print_areas')
-    column_formatters = {
-        'variants': '_variants_link',
-        'print_areas': '_print_areas_link'
-    }
+    # De rest van de configuratie blijft voorlopig staan.
     column_searchable_list = ['name']
     form_columns = ('name', 'description', 'printful_product_id')
 
