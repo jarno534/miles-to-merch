@@ -94,8 +94,13 @@ class ProductAdminView(SecuredModelView):
 
 class VariantAdminView(SecuredModelView):
     form = VariantForm
-    column_list = ('product.name', 'color', 'size', 'price', 'is_active', 'merch_color_type')
-    form_columns = ('product', 'color', 'size', 'price', 'is_active', 'merch_color_type', 'image', 'image_urls')
+    def _image_formatter(view, context, model, name):
+        if model.image:
+            return Markup(f'<img src="{model.image}" width="50">')
+        return ""
+    column_list = ('product.name', 'image', 'color', 'color_code', 'size', 'price', 'is_active', 'merch_color_type')
+    column_formatters = {'image': _image_formatter}
+    form_columns = ('product', 'color', 'color_code', 'size', 'price', 'is_active', 'merch_color_type', 'image', 'image_urls')
     column_editable_list = ['is_active', 'price', 'merch_color_type']
     column_filters = ['is_active', 'color', 'size', 'product.name', 'merch_color_type']
     column_searchable_list = ['color', 'size', 'product.name']

@@ -71,6 +71,7 @@ class Variant(db.Model):
     product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
     printful_variant_id = db.Column(db.Integer, unique=True, nullable=False)
     color = db.Column(db.String(50), nullable=False)
+    color_code = db.Column(db.String(20), nullable=True)
     size = db.Column(db.String(10), nullable=False)
     price = db.Column(db.Float, nullable=False)
     merch_color_type = db.Column(db.String(10), nullable=False)
@@ -82,7 +83,9 @@ class Variant(db.Model):
     def to_dict(self):
         return {
             'id': self.id, 'printful_variant_id': self.printful_variant_id,
-            'product_name': self.product.name, 'color': self.color, 'size': self.size,
+            'product_name': self.product.name, 'color': self.color,
+            'color_code': self.color_code,
+            'size': self.size,
             'price': self.price, 'merch_color_type': self.merch_color_type,
             'image': self.image,
             'image_urls': self.image_urls

@@ -90,6 +90,7 @@ export default {
       selectedSize: null,
     };
   },
+
   computed: {
     displayImageUrl() {
       if (this.selectedColor && this.product?.variants) {
@@ -115,8 +116,13 @@ export default {
 
     availableColors() {
       if (!this.product?.variants) return [];
-      const colors = this.product.variants.map((v) => v.color);
-      return [...new Set(colors)];
+      const colors = {};
+      this.product.variants.forEach((v) => {
+        if (!colors[v.color]) {
+          colors[v.color] = { name: v.color, code: v.color_code || '#ffffff' };
+        }
+      });
+      return Object.values(colors);
     },
 
     availableSizes() {
@@ -263,10 +269,10 @@ export default {
 }
 
 .color-swatch {
-  width: 40px;
-  height: 40px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
-  border: 2px solid #ccc;
+  border: 1px solid #ccc;
   cursor: pointer;
   transition: transform 0.2s, border-color 0.2s;
   padding: 2px;

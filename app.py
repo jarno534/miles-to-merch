@@ -131,20 +131,17 @@ def sync_printful_command():
                     db_variant = Variant(
                         product_id=db_product.id,
                         printful_variant_id=p_variant_id,
-                        is_active=False  # Standaard inactief
+                        is_active=False
                     )
                     db.session.add(db_variant)
 
                 db_variant.color = p_variant.get('color')
+                db_variant.color_code = p_variant.get('color_code')
                 db_variant.size = p_variant.get('size')
                 db_variant.price = float(p_variant.get('price'))
                 db_variant.merch_color_type = get_color_type_from_name(p_variant.get('color'))
                 db_variant.available_regions = list(p_variant.get('availability_regions', {}).keys())
-                
-                # FIX: Sla de modelafbeelding op in het nieuwe 'image' veld
                 db_variant.image = p_variant.get('image')
-
-                # Je kunt de oude image_urls behouden als je die nog ergens anders gebruikt
                 mockup_url = p_variant.get('image')
                 db_variant.image_urls = {'default': mockup_url}
 
