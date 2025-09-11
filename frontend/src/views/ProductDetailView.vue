@@ -92,21 +92,18 @@ export default {
   },
   computed: {
     displayImageUrl() {
-      if (this.selectedColor) {
-        const variantForColor = this.product.variants.find(
-          (v) => v.color === this.selectedColor
+      if (this.selectedColor && this.product?.variants) {
+        const variantWithMockup = this.product.variants.find(
+          (v) => v.color === this.selectedColor && v.image_urls?.mockup
         );
-        return (
-          variantForColor?.image_urls?.mockup ||
-          this.product.product_image_url ||
-          ""
-        );
+        if (variantWithMockup) {
+          return variantWithMockup.image_urls.mockup;
+        }
       }
-      return (
-        this.product.product_image_url ||
-        this.product.variants[0]?.image_urls?.mockup ||
-        ""
-      );
+      if (this.product?.product_image_url) {
+        return this.product.product_image_url;
+      }
+      return this.product?.variants?.[0]?.image_urls?.mockup || "";
     },
 
     displayPrice() {
