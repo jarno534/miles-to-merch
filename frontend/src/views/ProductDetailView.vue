@@ -66,6 +66,13 @@
         </p>
       </div>
     </div>
+  <div class="debug-section">
+    <h3>Debug Informatie</h3>
+    <pre><b>Geselecteerde Kleur:</b> {{ selectedColor }}</pre>
+    <pre><b>Geselecteerde Maat:</b> {{ selectedSize }}</pre>
+    <pre><b>Geselecteerde Variant:</b> {{ JSON.stringify(selectedVariant, null, 2) }}</pre>
+    <pre><b>Te tonen Afbeelding URL:</b> {{ displayImageUrl }}</pre>
+  </div>
   </div>
 </template>
 
@@ -187,6 +194,36 @@ export default {
 </script>
 
 <style scoped>
+.debug-section {
+  position: fixed;
+  bottom: 10px;
+  left: 10px;
+  background-color: #fff;
+  border: 2px solid #f00;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  z-index: 9999;
+  text-align: left;
+  max-width: 400px;
+  max-height: 400px;
+  overflow: auto;
+}
+
+.debug-section h3 {
+  margin-top: 0;
+  color: #f00;
+}
+
+.debug-section pre {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  margin: 5px 0;
+  background-color: #f5f5f5;
+  padding: 5px;
+  border-radius: 4px;
+}
+
 .product-detail-page {
   display: flex;
   justify-content: center;
