@@ -268,8 +268,8 @@ export default {
 }
 
 .color-swatch {
-  width: 50px;
-  height: 50px;
+  width: 45px;
+  height: 45px;
   border-radius: 50%;
   border: 1px solid #ccc;
   cursor: pointer;
