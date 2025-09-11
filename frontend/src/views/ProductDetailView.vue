@@ -20,14 +20,13 @@
           <div class="color-swatches">
             <button
               v-for="color in availableColors"
-              :key="color"
+              :key="color.name"
               class="color-swatch"
-              :class="{ active: selectedColor === color }"
-              @click="selectColor(color)"
+              :class="{ active: selectedColor === color.name }"
+              @click="selectColor(color.name)"
               :title="color"
-            >
-              <img :src="getColorSwatchUrl(color)" :alt="color" />
-            </button>
+              :style="{ backgroundColor: color.code }
+            ></button>
           </div>
         </div>
 
