@@ -73,8 +73,8 @@ class ProductAdminView(SecuredModelView):
     column_list = ('name', 'printful_product_id', 'variants', 'print_areas')
 
     column_formatters = {
-        'variants': '_variants_link',
-        'print_areas': '_print_areas_link'
+        'variants': _variants_link,
+        'print_areas': _print_areas_link
     }
 
     column_searchable_list = ['name']
