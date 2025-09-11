@@ -76,7 +76,6 @@ def seed_db_command():
     db.session.commit()
     print("Testproduct en printvlakken succesvol toegevoegd!")
 
-
 @app.cli.command("sync-printful")
 def sync_printful_command():
     """Haalt product templates op van Printful en synchroniseert de database."""
@@ -118,7 +117,6 @@ def sync_printful_command():
                     name=product_data.get('title', template_product_name),
                     description=product_data.get('description'),
                     printful_product_id=template_product_id,
-                    base_price=float(variants_data[0].get('price', 0.0)) if variants_data else 0.0
                 )
                 db.session.add(db_product)
                 db.session.commit()
@@ -133,7 +131,7 @@ def sync_printful_command():
                     db_variant = Variant(
                         product_id=db_product.id,
                         printful_variant_id=p_variant_id,
-                        is_active=False
+                        is_active=False  # Standaard inactief
                     )
                     db.session.add(db_variant)
 
@@ -141,15 +139,14 @@ def sync_printful_command():
                 db_variant.size = p_variant.get('size')
                 db_variant.price = float(p_variant.get('price'))
                 db_variant.merch_color_type = get_color_type_from_name(p_variant.get('color'))
-
                 db_variant.available_regions = list(p_variant.get('availability_regions', {}).keys())
+                
+                # FIX: Sla de modelafbeelding op in het nieuwe 'image' veld
+                db_variant.image = p_variant.get('image')
 
+                # Je kunt de oude image_urls behouden als je die nog ergens anders gebruikt
                 mockup_url = p_variant.get('image')
                 db_variant.image_urls = {'default': mockup_url}
-
-                db_variant.print_areas = {
-                    "front": {"name": "Front", "image_url": mockup_url}
-                }
 
                 variants_processed += 1
 

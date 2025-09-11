@@ -1,4 +1,3 @@
-# In models.py
 from extensions import db
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -53,8 +52,6 @@ class Product(db.Model):
 
     def to_dict(self):
         active_variants = self.variants.filter_by(is_active=True).all()
-        if not active_variants:
-            return None
         return {
             'id': self.id, 'name': self.name, 'description': self.description,
             'printful_product_id': self.printful_product_id,
