@@ -13,9 +13,7 @@
         @click="selectProduct(product.id)"
       >
         <img
-          :src="
-            product.product_image_url || product.variants[0]?.image_urls?.mockup
-          "
+          :src="product.product_image_url || product.variants[0]?.image"
           :alt="product.name"
           class="product-image"
         />
@@ -55,16 +53,6 @@ export default {
   },
 
   methods: {
-    getProductImageUrl(product) {
-      if (product.print_areas) {
-        const firstAreaKey = Object.keys(product.print_areas)[0];
-        if (firstAreaKey) {
-          return product.print_areas[firstAreaKey].image_url;
-        }
-      }
-      return "";
-    },
-
     async fetchProducts() {
       try {
         const response = await axios.get("/api/products");

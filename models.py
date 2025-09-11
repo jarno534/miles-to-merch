@@ -77,6 +77,7 @@ class Variant(db.Model):
     size = db.Column(db.String(10), nullable=False)
     price = db.Column(db.Float, nullable=False)
     merch_color_type = db.Column(db.String(10), nullable=False)
+    image = db.Column(db.String(255), nullable=True)
     image_urls = db.Column(db.JSON, nullable=True, default=lambda: {"mockup": None, "template": None})
     available_regions = db.Column(db.JSON, nullable=False)
     is_active = db.Column(db.Boolean, default=False, nullable=False)
@@ -86,6 +87,7 @@ class Variant(db.Model):
             'id': self.id, 'printful_variant_id': self.printful_variant_id,
             'product_name': self.product.name, 'color': self.color, 'size': self.size,
             'price': self.price, 'merch_color_type': self.merch_color_type,
+            'image': self.image,
             'image_urls': self.image_urls
         }
 

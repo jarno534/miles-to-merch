@@ -92,23 +92,17 @@ export default {
   },
   computed: {
     displayImageUrl() {
-      // Als er een kleur is geselecteerd, zoek dan de variant en gebruik diens 'image' veld.
       if (this.selectedColor && this.product?.variants) {
         const variantForColor = this.product.variants.find(
           (v) => v.color === this.selectedColor
         );
-        // We gebruiken nu 'image' in plaats van 'image_urls.mockup'
         if (variantForColor && variantForColor.image) {
           return variantForColor.image;
         }
       }
-      
-      // Als er (nog) geen kleur is geselecteerd, toon dan de algemene "hero" afbeelding.
       if (this.product?.product_image_url) {
         return this.product.product_image_url;
       }
-
-      // Als fallback, toon de afbeelding van de allereerste variant.
       return this.product?.variants?.[0]?.image || "";
     },
 
@@ -139,13 +133,6 @@ export default {
         this.product.variants.find(
           (v) => v.color === this.selectedColor && v.size === this.selectedSize
         ) || null
-      );
-    },
-
-    variantsForSelectedColor() {
-      if (!this.selectedColor || !this.product?.variants) return [];
-      return this.product.variants.filter(
-        (v) => v.color === this.selectedColor
       );
     },
   },

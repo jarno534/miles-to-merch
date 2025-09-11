@@ -13,6 +13,7 @@
     <div
       v-else
       class="mockup-container"
+      ref="tshirtMockup"
       :style="{ aspectRatio: backgroundAspectRatio }"
     >
       <img
@@ -430,7 +431,7 @@ export default {
 
   computed: {
     backgroundImageUrl() {
-      return this.selectedVariant?.image_urls?.template || null;
+      return this.printAreaData?.image_url || null;
     },
 
     designAreaStyle() {
@@ -1346,6 +1347,7 @@ export default {
   height: 100%;
   object-fit: contain;
   z-index: 0;
+  pointer-events: none;
 }
 
 .loading-message {
@@ -1380,8 +1382,6 @@ export default {
   transform-style: preserve-3d;
   overflow: hidden;
   z-index: 1;
-  background-color: rgba(0, 123, 255, 0.1);
-  border: 1px dashed rgba(0, 123, 255, 0.5);
 }
 
 .design-area-container.is-active {

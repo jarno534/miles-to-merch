@@ -76,21 +76,26 @@ class ProductAdminView(SecuredModelView):
     def _print_areas_link(view, context, model, name):
         url = url_for('printarea.index_view', flt1_product_id_equals=model.id)
         return Markup(f'<a href="{url}">Bekijk Printvlakken</a>')
+    
+    def _image_formatter(view, context, model, name):
+        if model.product_image_url:
+            return Markup(f'<img src="{model.product_image_url}" width="100">')
+        return ""
 
     column_list = ('name', 'printful_product_id', 'product_image_url', 'variants', 'print_areas')
-
     column_formatters = {
         'variants': _variants_link,
-        'print_areas': _print_areas_link
+        'print_areas': _print_areas_link,
+        'product_image_url': _image_formatter
     }
-
+    column_labels = {'product_image_url': 'Hero Image'}
     column_searchable_list = ['name']
     form_columns = ('name', 'description', 'printful_product_id', 'product_image_url')
 
 class VariantAdminView(SecuredModelView):
     form = VariantForm
     column_list = ('product.name', 'color', 'size', 'price', 'is_active', 'merch_color_type')
-    form_columns = ('product', 'color', 'size', 'price', 'is_active', 'merch_color_type', 'image_urls')
+    form_columns = ('product', 'color', 'size', 'price', 'is_active', 'merch_color_type', 'image', 'image_urls')
     column_editable_list = ['is_active', 'price', 'merch_color_type']
     column_filters = ['is_active', 'color', 'size', 'product.name', 'merch_color_type']
     column_searchable_list = ['color', 'size', 'product.name']
