@@ -63,16 +63,12 @@ class UserAdminView(SecuredModelView):
 
 class ProductAdminView(SecuredModelView):
     def _variants_link(view, context, model, name):
-        count = model.variants.count()
-        if count == 0: return "0 Varianten"
         url = url_for('variant.index_view', flt1_product_id_equals=model.id)
-        return Markup(f'<a href="{url}">{count} Varianten</a>')
+        return Markup(f'<a href="{url}">Bekijk Varianten</a>')
 
     def _print_areas_link(view, context, model, name):
-        count = len(model.print_areas)
-        if count == 0: return "0 Vlakken"
         url = url_for('printarea.index_view', flt1_product_id_equals=model.id)
-        return Markup(f'<a href="{url}">{count} Vlakken</a>')
+        return Markup(f'<a href="{url}">Bekijk Printvlakken</a>')
 
     column_list = ('name', 'printful_product_id', 'variants', 'print_areas')
     column_formatters = {
@@ -136,7 +132,7 @@ class VariantAdminView(SecuredModelView):
 
 class PrintAreaAdminView(SecuredModelView):
     column_list = ('product.name', 'name', 'placement', 'price', 'width', 'height', 'top', 'left', 'mockup_width', 'mockup_height')
-    column_editable_list = ['price', 'width', 'height', 'top', 'left', 'mockup_width', 'mockup_height']
+    column_editable_list = ['name', 'placement', 'price', 'width', 'height', 'top', 'left', 'mockup_width', 'mockup_height']
     column_filters = ['product.name']
     form_columns = ('product', 'placement', 'name', 'price', 'width', 'height', 'top', 'left', 'mockup_width', 'mockup_height', 'image_url')
 
