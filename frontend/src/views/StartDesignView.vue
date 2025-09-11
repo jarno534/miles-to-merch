@@ -7,7 +7,6 @@
         any device.
       </p>
 
-      <!-- This box now changes based on your login status -->
       <div class="choice-box">
         <div v-if="auth.isLoggedIn && auth.user.has_strava_linked">
           <h2>Use a Strava Activity</h2>
@@ -62,18 +61,24 @@ export default {
       required: true,
     },
   },
+
   data() {
     return {
       gpxError: null,
       auth: auth,
     };
   },
+
   methods: {
     useStrava() {
+      console.log("useStrava gestart. Product ID:", this.productId); // <-- LOG 1
       localStorage.setItem("selectedProductId", this.productId);
+
       if (auth.isLoggedIn && auth.user.has_strava_linked) {
+        console.log("Navigeren naar 'Activities'..."); // <-- LOG 2
         this.$router.push({ name: "Activities" });
       } else {
+        console.log("Redirecten naar Strava authenticatie..."); // <-- LOG 3
         window.location.href = "/auth/login/strava";
       }
     },
@@ -100,19 +105,17 @@ export default {
               "GPX file must contain a track with at least two points."
             );
           }
-
           const activityData = this.formatGpxData(gpx, gpxText);
-
           console.log("Stap 1: Finaal activityData object:", activityData);
-
           const gpxSessionKey = `gpx_${Date.now()}`;
           localStorage.setItem(gpxSessionKey, JSON.stringify(activityData));
-
-          this.$router.push({
+          this.routePayload = {
             name: "Design",
             params: { productId: this.productId, activityId: "gpx" },
             query: { gpx_key: gpxSessionKey },
-          });
+          };
+          console.log("Navigeren naar 'Design' met payload:", routePayload); // <-- LOG 4
+          this.$router.push(routePayload);
         } catch (error) {
           console.error("GPX Parsing Error Details:", error);
           this.gpxError =

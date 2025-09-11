@@ -66,14 +66,17 @@ export default {
       const options = { year: "numeric", month: "long", day: "numeric" };
       return new Date(dateString).toLocaleDateString("en-US", options);
     },
+
     formatDistance(meters) {
       return `${(meters / 1000).toFixed(2)} km`;
     },
+
     formatDuration(seconds) {
       const hours = Math.floor(seconds / 3600);
       const minutes = Math.floor((seconds % 3600) / 60);
       return `${hours}h ${minutes}m`;
     },
+
     selectActivity(activityId) {
       if (this.productId) {
         this.$router.push({
