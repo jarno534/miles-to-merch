@@ -100,7 +100,7 @@ class VariantAdminView(SecuredModelView):
         return ""
     column_list = ('product.name', 'image', 'color', 'color_code', 'size', 'price', 'is_active', 'merch_color_type')
     column_formatters = {'image': _image_formatter}
-    form_columns = ('product', 'color', 'color_code', 'size', 'price', 'is_active', 'merch_color_type', 'image', 'image_urls')
+    form_columns = ('product', 'color', 'color_code', 'size', 'price', 'is_active', 'merch_color_type', 'image', 'image_urls', 'image_base_path')
     column_editable_list = ['is_active', 'price', 'merch_color_type']
     column_filters = ['is_active', 'color', 'size', 'product.name', 'merch_color_type']
     column_searchable_list = ['color', 'size', 'product.name']

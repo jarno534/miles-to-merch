@@ -332,10 +332,26 @@ export default {
 
   computed: {
     activePrintArea() {
-      if (this.editorProductData && this.editorProductData.print_areas) {
-        return this.editorProductData.print_areas[this.activePlacement] || null;
+      if (!this.editorProductData || !this.editorProductData.print_areas || !this.activePlacement) {
+        return null;
       }
-      return null;
+
+      const selectedVariantId = parseInt(localStorage.getItem("selectedVariantId"));
+      if (!selectedVariantId || !this.editorProductData.variants) {
+        return this.editorProductData.print_areas[this.activePlacement];
+      }
+      const selectedVariant = this.editorProductData.variants.find(v => v.id === selectedVariantId);
+
+      const printArea = this.editorProductData.print_areas[this.activePlacement];
+
+      if (printArea && selectedVariant && selectedVariant.image_base_path) {
+        return {
+          ...printArea,
+          image_url: `/${selectedVariant.image_base_path}/${this.activePlacement}.jpg`
+        };
+      }
+
+      return printArea;
     },
 
     availableGraphSources() {
@@ -1526,7 +1542,7 @@ export default {
   flex-grow: 1;
   display: flex;
   flex-direction: column;
-  algin-items: center;
+  align-items: center;
   justify-content: center;
   padding: 20px;
   min-width: 0;
