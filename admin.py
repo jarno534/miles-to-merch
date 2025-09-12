@@ -32,6 +32,7 @@ class ProductForm(FlaskForm):
 
 class VariantForm(FlaskForm):
     image_urls = TextAreaField('Image URLs (JSON format)')
+    image_base_path = StringField('Image Base Path')
 
 class InspirationAdminView(SecuredModelView):
     def _image_formatter(view, context, model, name):
