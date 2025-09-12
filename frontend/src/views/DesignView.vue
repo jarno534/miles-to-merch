@@ -332,31 +332,24 @@ export default {
 
   computed: {
     activePrintArea() {
-      if (
-        !this.editorProductData ||
-        !this.editorProductData.print_areas ||
-        !this.activePlacement
-      ) {
+      if (!this.editorProductData || !this.editorProductData.print_areas || !this.activePlacement) {
         return null;
       }
 
-      const selectedVariantId = parseInt(
-        localStorage.getItem("selectedVariantId")
-      );
+      const printArea = this.editorProductData.print_areas[this.activePlacement];
+      if (!printArea) return null;
+
+      const selectedVariantId = parseInt(localStorage.getItem("selectedVariantId"));
       if (!selectedVariantId || !this.editorProductData.variants) {
-        return this.editorProductData.print_areas[this.activePlacement];
+        return printArea;
       }
-      const selectedVariant = this.editorProductData.variants.find(
-        (v) => v.id === selectedVariantId
-      );
 
-      const printArea =
-        this.editorProductData.print_areas[this.activePlacement];
+      const selectedVariant = this.editorProductData.variants.find(v => v.id === selectedVariantId);
 
-      if (printArea && selectedVariant && selectedVariant.image_base_path) {
+      if (selectedVariant && selectedVariant.image_base_path) {
         return {
           ...printArea,
-          image_url: `/${selectedVariant.image_base_path}/${this.activePlacement}.jpg`,
+          image_url: `/${selectedVariant.image_base_path}/${this.activePlacement}.jpg`
         };
       }
 
