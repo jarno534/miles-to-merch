@@ -4,7 +4,8 @@
       <div class="modal-content">
         <h2 class="modal-title">Choose Your Units</h2>
         <p class="modal-message">
-          Select the unit system you'd like to see for distance, temperature, elevation ...
+          Select the unit system you'd like to see for distance, temperature,
+          elevation ...
         </p>
         <div class="modal-actions">
           <button @click="selectUnits('metric')" class="button-primary">

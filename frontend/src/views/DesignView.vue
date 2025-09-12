@@ -404,14 +404,17 @@ export default {
     },
 
     editorProductData(newData) {
-    if (newData && newData.print_areas) {
-      const availablePlacements = Object.keys(newData.print_areas);
-      if (availablePlacements.length > 0 && !availablePlacements.includes(this.activePlacement)) {
-        this.activePlacement = availablePlacements[0];
+      if (newData && newData.print_areas) {
+        const availablePlacements = Object.keys(newData.print_areas);
+        if (
+          availablePlacements.length > 0 &&
+          !availablePlacements.includes(this.activePlacement)
+        ) {
+          this.activePlacement = availablePlacements[0];
+        }
       }
-    }
-    this.updatePrintArea();
-  },
+      this.updatePrintArea();
+    },
 
     designState: {
       handler() {
@@ -488,25 +491,34 @@ export default {
 
   methods: {
     updatePrintArea() {
-      if (!this.editorProductData || !this.editorProductData.print_areas || !this.activePlacement) {
+      if (
+        !this.editorProductData ||
+        !this.editorProductData.print_areas ||
+        !this.activePlacement
+      ) {
         this.currentPrintArea = null;
         return;
       }
-      
-      const printArea = this.editorProductData.print_areas[this.activePlacement];
-      const selectedVariantId = parseInt(localStorage.getItem("selectedVariantId"));
-      
+
+      const printArea =
+        this.editorProductData.print_areas[this.activePlacement];
+      const selectedVariantId = parseInt(
+        localStorage.getItem("selectedVariantId")
+      );
+
       if (!selectedVariantId || !this.editorProductData.variants) {
         this.currentPrintArea = printArea;
         return;
       }
 
-      const selectedVariant = this.editorProductData.variants.find(v => v.id === selectedVariantId);
+      const selectedVariant = this.editorProductData.variants.find(
+        (v) => v.id === selectedVariantId
+      );
 
       if (printArea && selectedVariant && selectedVariant.image_base_path) {
         this.currentPrintArea = {
           ...printArea,
-          image_url: `/${selectedVariant.image_base_path}/${this.activePlacement}.jpg`
+          image_url: `/${selectedVariant.image_base_path}/${this.activePlacement}.jpg`,
         };
       } else {
         this.currentPrintArea = printArea;
