@@ -89,8 +89,9 @@ class ProductAdminView(SecuredModelView):
         'product_image_url': _image_formatter
     }
     column_labels = {'product_image_url': 'Hero Image'}
-    column_searchable_list = ['name']
+    column_searchable_list = ['name', 'printful_product_id']
     form_columns = ('name', 'description', 'printful_product_id', 'product_image_url')
+    column_editable_list = ['name']
 
 class VariantAdminView(SecuredModelView):
     form = VariantForm
@@ -98,7 +99,7 @@ class VariantAdminView(SecuredModelView):
         if model.image:
             return Markup(f'<img src="{model.image}" width="50">')
         return ""
-    column_list = ('product.name', 'image', 'color', 'color_code', 'size', 'price', 'is_active', 'merch_color_type')
+    column_list = ('product.name', 'image', 'color', 'color_code', 'size', 'price', 'is_active', 'merch_color_type','image_base_path', 'image_urls')
     column_formatters = {'image': _image_formatter}
     form_columns = ('product', 'color', 'color_code', 'size', 'price', 'is_active', 'merch_color_type', 'image', 'image_urls', 'image_base_path')
     column_editable_list = ['is_active', 'price', 'merch_color_type']
