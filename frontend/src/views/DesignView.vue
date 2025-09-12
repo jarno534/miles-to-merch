@@ -32,7 +32,7 @@
         :loading="loading"
         :activity-data="activityData"
         :editor-product-data="editorProductData"
-        :print-area-data="activePrintArea"
+        :print-area-data="currentPrintArea"
         :selection="selection"
         :map-element="mapElement"
         :map-settings="mapSettings"
@@ -119,6 +119,7 @@ export default {
   },
   data() {
     return {
+      currentPrintArea: null,
       activePlacement: "front",
       editorProductData: null,
       isDirty: false,
@@ -331,40 +332,6 @@ export default {
   },
 
   computed: {
-    activePrintArea() {
-      if (
-        !this.editorProductData ||
-        !this.editorProductData.print_areas ||
-        !this.activePlacement
-      ) {
-        return null;
-      }
-
-      const printArea =
-        this.editorProductData.print_areas[this.activePlacement];
-      if (!printArea) return null;
-
-      const selectedVariantId = parseInt(
-        localStorage.getItem("selectedVariantId")
-      );
-      if (!selectedVariantId || !this.editorProductData.variants) {
-        return printArea;
-      }
-
-      const selectedVariant = this.editorProductData.variants.find(
-        (v) => v.id === selectedVariantId
-      );
-
-      if (selectedVariant && selectedVariant.image_base_path) {
-        return {
-          ...printArea,
-          image_url: `/${selectedVariant.image_base_path}/${this.activePlacement}.jpg`,
-        };
-      }
-
-      return printArea;
-    },
-
     availableGraphSources() {
       if (!this.activityData || !this.activityData.streams) {
         return [];
@@ -432,14 +399,19 @@ export default {
     },
   },
   watch: {
-    editorProductData(newData) {
-      if (newData && newData.print_areas) {
-        const availablePlacements = Object.keys(newData.print_areas);
-        if (!availablePlacements.includes(this.activePlacement)) {
-          this.activePlacement = availablePlacements[0];
-        }
-      }
+    activePlacement() {
+      this.updatePrintArea();
     },
+
+    editorProductData(newData) {
+    if (newData && newData.print_areas) {
+      const availablePlacements = Object.keys(newData.print_areas);
+      if (availablePlacements.length > 0 && !availablePlacements.includes(this.activePlacement)) {
+        this.activePlacement = availablePlacements[0];
+      }
+    }
+    this.updatePrintArea();
+  },
 
     designState: {
       handler() {
@@ -515,6 +487,32 @@ export default {
   },
 
   methods: {
+    updatePrintArea() {
+      if (!this.editorProductData || !this.editorProductData.print_areas || !this.activePlacement) {
+        this.currentPrintArea = null;
+        return;
+      }
+      
+      const printArea = this.editorProductData.print_areas[this.activePlacement];
+      const selectedVariantId = parseInt(localStorage.getItem("selectedVariantId"));
+      
+      if (!selectedVariantId || !this.editorProductData.variants) {
+        this.currentPrintArea = printArea;
+        return;
+      }
+
+      const selectedVariant = this.editorProductData.variants.find(v => v.id === selectedVariantId);
+
+      if (printArea && selectedVariant && selectedVariant.image_base_path) {
+        this.currentPrintArea = {
+          ...printArea,
+          image_url: `/${selectedVariant.image_base_path}/${this.activePlacement}.jpg`
+        };
+      } else {
+        this.currentPrintArea = printArea;
+      }
+    },
+
     getInitialElementColor(type = "main") {
       const isDark =
         this.editorProductData &&
@@ -1482,15 +1480,6 @@ export default {
       this.badgeListElement.textColor = this.getInitialElementColor("main");
       this.weatherElement.textColor = this.getInitialElementColor("main");
       this.activityPhotos = finalActivityRes.data.photos || [];
-
-      if (this.editorProductData.print_areas) {
-        const availablePlacements = Object.keys(
-          this.editorProductData.print_areas
-        );
-        if (availablePlacements.length > 0) {
-          this.activePlacement = availablePlacements[0];
-        }
-      }
 
       if (this.activityData && this.activityData.details.athlete?.id) {
         try {
