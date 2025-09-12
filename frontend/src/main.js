@@ -1,6 +1,4 @@
 import { createApp } from "vue";
-import Vue from "vue";
-Vue.config.devtools = true;
 import App from "./App.vue";
 import router from "./router";
 import Toast from "vue-toastification";
