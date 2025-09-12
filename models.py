@@ -77,6 +77,7 @@ class Variant(db.Model):
     merch_color_type = db.Column(db.String(10), nullable=False)
     image = db.Column(db.String(255), nullable=True)
     image_urls = db.Column(db.JSON, nullable=True, default=lambda: {"mockup": None, "template": None})
+    image_base_path = db.Column(db.String(255), nullable=True)
     available_regions = db.Column(db.JSON, nullable=False)
     is_active = db.Column(db.Boolean, default=False, nullable=False)
 
@@ -88,7 +89,8 @@ class Variant(db.Model):
             'size': self.size,
             'price': self.price, 'merch_color_type': self.merch_color_type,
             'image': self.image,
-            'image_urls': self.image_urls
+            'image_urls': self.image_urls,
+            'image_base_path': self.image_base_path
         }
 
 class PrintArea(db.Model):
