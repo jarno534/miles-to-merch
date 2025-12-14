@@ -3,7 +3,12 @@
     <SpinnerComponent v-if="loading" text="Loading product details..." />
     <div v-else-if="product" class="product-container">
       <div class="product-image-container">
-        <img :src="displayImageUrl" :alt="product.name" class="product-image" />
+        <img
+          :src="displayImageUrl"
+          :alt="product.name"
+          class="product-image"
+          @error="handleImageError"
+        />
       </div>
       <div class="product-info-container">
         <h1 class="product-name">{{ product.name }}</h1>
@@ -92,18 +97,26 @@ export default {
 
   computed: {
     displayImageUrl() {
+      // 1. Try to find a variant-specific match
       if (this.selectedColor && this.product?.variants) {
         const variantForColor = this.product.variants.find(
           (v) => v.color === this.selectedColor
         );
-        if (variantForColor && variantForColor.image) {
-          return variantForColor.image;
+        if (variantForColor) {
+          console.log("Variant Data:", variantForColor); // Debug log
+          return this.getImageUrl(variantForColor);
         }
       }
-      if (this.product?.product_image_url) {
-        return this.product.product_image_url;
+
+      // 2. Fallback: First available variant
+      if (this.product?.variants?.length > 0) {
+        return this.getImageUrl(this.product.variants[0]);
       }
-      return this.product?.variants?.[0]?.image || "";
+
+      // 3. Fallback: Product-level image or placeholder
+      return (
+        this.product?.product_image_url || require("@/assets/placeholder.svg")
+      ); // Ensure you have a placeholder or handle this path
     },
 
     displayPrice() {
@@ -154,6 +167,16 @@ export default {
   },
 
   methods: {
+    getImageUrl(variant) {
+      if (!variant) return "";
+      if (variant.image_base_path) {
+        const filename =
+          variant.image_base_path === "mug" ? "center.jpg" : "front.jpg";
+        return `/${variant.image_base_path}/${filename}`;
+      }
+      return variant.image || "";
+    },
+
     selectColor(colorName) {
       this.selectedColor = colorName;
       if (!this.availableSizes.includes(this.selectedSize)) {
@@ -167,7 +190,7 @@ export default {
 
     getColorSwatchUrl(colorName) {
       const variant = this.product.variants.find((v) => v.color === colorName);
-      return variant?.image || "";
+      return this.getImageUrl(variant);
     },
 
     startDesigning() {
@@ -178,6 +201,14 @@ export default {
         name: "StartDesign",
         params: { productId: this.productId },
       });
+    },
+
+    handleImageError(e) {
+      console.warn("Image failed to load:", e.target.src);
+      // Prevent infinite loop if placeholder also fails
+      if (!e.target.src.includes("placeholder")) {
+        e.target.src = require("@/assets/placeholder.svg"); // Make sure this asset exists or use a web url
+      }
     },
   },
 };

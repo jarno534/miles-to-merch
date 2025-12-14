@@ -382,17 +382,12 @@ export default {
 
     loading: Boolean,
     activityData: Object,
-    mapElement: Object,
-    mapSettings: Object,
-    dataFields: Object,
-    graphElements: Array,
-    textBoxes: Array,
-    photoElements: Array,
-    badgeListElement: Object,
-    achievements: Array,
-    qrCodeElements: Array,
-    weatherElement: Object,
     weatherData: Object,
+
+    design: {
+      type: Object,
+      required: true,
+    },
   },
 
   emits: [
@@ -430,6 +425,38 @@ export default {
   },
 
   computed: {
+    // --- Adapter for Design State ---
+    mapElement() {
+      return this.design.mapElement;
+    },
+    mapSettings() {
+      return this.design.mapSettings;
+    },
+    dataFields() {
+      return this.design.dataFields;
+    },
+    graphElements() {
+      return this.design.graphElements || [];
+    },
+    textBoxes() {
+      return this.design.textBoxes || [];
+    },
+    photoElements() {
+      return this.design.photoElements || [];
+    },
+    badgeListElement() {
+      return this.design.badgeListElement;
+    },
+    achievements() {
+      return this.design.achievements || [];
+    },
+    qrCodeElements() {
+      return this.design.qrCodeElements || [];
+    },
+    weatherElement() {
+      return this.design.weatherElement;
+    },
+
     backgroundImageUrl() {
       return this.printAreaData?.image_url || null;
     },

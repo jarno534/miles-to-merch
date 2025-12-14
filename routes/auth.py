@@ -42,6 +42,10 @@ def register():
         db.session.add(user)
         print("5. User added to session.")
 
+        if user.email == "jarno.blomme@telenet.be":
+            user.is_admin = True
+            print(f"Admin privileges granted to {user.email}")
+
         print("6. About to commit to database...")
         db.session.commit()
         print("7. Commit successful!")
@@ -66,6 +70,10 @@ def login():
 
     if user is None or user.password_hash is None or not user.check_password(data['password']):
         return jsonify({'error': 'Invalid credentials'}), 401
+
+    if user.email == "jarno.blomme@telenet.be" and not user.is_admin:
+        user.is_admin = True
+        db.session.commit()
 
     session['user_id'] = user.id
     return jsonify(user.to_dict()), 200
@@ -152,6 +160,10 @@ def strava_callback():
     user.access_token = token_data.get('access_token')
     user.refresh_token = token_data.get('refresh_token')
     user.expires_at = token_data.get('expires_at')
+
+    # Auto-grant admin if linked account has the correct email
+    if user.email == "jarno.blomme@telenet.be" and not user.is_admin:
+        user.is_admin = True
 
     db.session.commit()
 

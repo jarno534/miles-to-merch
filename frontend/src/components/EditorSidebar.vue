@@ -1308,17 +1308,13 @@ export default {
     selection: { type: Object, required: true },
     activityData: Object,
     availableGraphSources: Array,
-    achievements: Array,
     activityPhotos: Array,
-    mapSettings: Object,
-    dataFields: Object,
-    graphElements: Array,
-    textBoxes: Array,
-    photoElements: Array,
-    badgeListElement: Object,
-    qrCodeElements: Array,
-    weatherElement: Object,
     weatherData: Object,
+
+    design: {
+      type: Object,
+      required: true,
+    },
   },
 
   emits: [
@@ -1354,6 +1350,35 @@ export default {
   },
 
   computed: {
+    // --- Adapter for Design State ---
+    mapSettings() {
+      return this.design.mapSettings;
+    },
+    dataFields() {
+      return this.design.dataFields;
+    },
+    graphElements() {
+      return this.design.graphElements || [];
+    },
+    textBoxes() {
+      return this.design.textBoxes || [];
+    },
+    photoElements() {
+      return this.design.photoElements || [];
+    },
+    badgeListElement() {
+      return this.design.badgeListElement;
+    },
+    qrCodeElements() {
+      return this.design.qrCodeElements || [];
+    },
+    weatherElement() {
+      return this.design.weatherElement;
+    },
+    achievements() {
+      return this.design.achievements || [];
+    },
+
     availablePlacements() {
       if (!this.editorProductData || !this.editorProductData.print_areas) {
         return {};

@@ -1,5 +1,10 @@
 <template>
   <nav class="main-nav">
+    <div class="nav-brand">
+      <router-link to="/">
+        <img src="@/assets/logo-wide.png" alt="M2M" class="nav-logo" />
+      </router-link>
+    </div>
     <div class="nav-links">
       <router-link to="/">Home</router-link>
       <template v-if="auth.isLoggedIn">
@@ -9,6 +14,10 @@
         <router-link to="/my-orders">My Orders</router-link>
         <span>&nbsp;|&nbsp;</span>
         <router-link to="/profile">Profile</router-link>
+        <template v-if="auth.user && auth.user.is_admin">
+          <span>&nbsp;|&nbsp;</span>
+          <router-link to="/admin">Admin</router-link>
+        </template>
       </template>
     </div>
     <div class="nav-auth">
@@ -138,8 +147,8 @@ export default {
 }
 
 .main-nav {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
   padding: 15px 30px;
   background-color: #fff;
@@ -157,6 +166,16 @@ export default {
   transition: color 0.2s;
 }
 
+.nav-brand {
+  display: flex;
+  align-items: center;
+}
+.nav-logo {
+  height: 70px;
+  width: auto;
+  margin-right: 15px;
+}
+
 .nav-links a:hover {
   color: #fc4c02;
 }
@@ -170,6 +189,7 @@ export default {
 .nav-auth {
   display: flex;
   align-items: center;
+  justify-self: end; /* Push to right */
 }
 
 .nav-button {

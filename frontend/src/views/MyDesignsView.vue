@@ -32,6 +32,14 @@
         </div>
       </div>
     </div>
+
+    <ModalComponent
+      :visible="showDeleteModal"
+      title="Delete Design"
+      message="Are you sure you want to delete this design? This action cannot be undone."
+      @confirm="confirmDelete"
+      @cancel="cancelDelete"
+    />
   </div>
 </template>
 
@@ -39,14 +47,17 @@
 import axios from "@/apiConfig.js";
 import { notifySuccess, notifyError } from "../notifications";
 import SpinnerComponent from "@/components/SpinnerComponent.vue";
+import ModalComponent from "@/components/ModalComponent.vue";
 
 export default {
   name: "MyDesignsView",
-  components: { SpinnerComponent },
+  components: { SpinnerComponent, ModalComponent },
   data() {
     return {
       designs: [],
       loading: true,
+      showDeleteModal: false,
+      designToDelete: null,
     };
   },
 
@@ -103,19 +114,28 @@ export default {
         query: { design_id: design.id },
       });
     },
-    async deleteDesign(designId) {
-      if (!confirm("Are you sure you want to delete this design?")) {
-        return;
-      }
+    deleteDesign(designId) {
+      this.designToDelete = designId;
+      this.showDeleteModal = true;
+    },
+    async confirmDelete() {
+      if (!this.designToDelete) return;
+
       try {
-        await axios.delete(`/api/designs/${designId}`);
-        notifySuccess("Design deleted successfully.");
+        await axios.delete(`/api/designs/${this.designToDelete}`);
         notifySuccess("Design deleted successfully.");
         await this.fetchDesigns();
       } catch (error) {
         console.error("Error deleting design:", error);
         notifyError("Could not delete the design. Please try again.");
+      } finally {
+        this.showDeleteModal = false;
+        this.designToDelete = null;
       }
+    },
+    cancelDelete() {
+      this.showDeleteModal = false;
+      this.designToDelete = null;
     },
     async editDesignName(design) {
       const newName = prompt("Enter a new name for your design:", design.name);

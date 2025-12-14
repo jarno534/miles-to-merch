@@ -1,7 +1,6 @@
 <template>
   <div class="products-page">
     <div class="header">
-      <h1>Miles to Merch</h1>
       <p>Choose your favorite item and immortalize your achievement.</p>
     </div>
     <SpinnerComponent v-if="loading" text="Loading products..." />
@@ -103,6 +102,12 @@ export default {
   font-size: 1.2rem;
   color: #666;
 }
+.home-logo {
+  max-width: 80%;
+  height: auto;
+  max-height: 150px; /* Adjust as needed */
+  margin-bottom: 20px;
+}
 .product-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -126,8 +131,9 @@ export default {
 }
 .product-image {
   width: 100%;
-  height: 220px;
-  object-fit: cover;
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+  background-color: #fff;
 }
 .product-info {
   padding: 20px;
@@ -161,11 +167,15 @@ export default {
   background-color: #fc4c02;
   color: white;
   border: none;
-  padding: 10px 15px;
+  padding: 12px 24px;
   border-radius: 8px;
   font-weight: bold;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: transform 0.2s, background-color 0.2s, box-shadow 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 0.9rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 .details-button:hover {
   background-color: #e24300;

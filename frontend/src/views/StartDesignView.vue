@@ -79,8 +79,9 @@ export default {
         this.$router.push({ name: "Activities" });
       } else {
         console.log("Redirecten naar Strava authenticatie..."); // <-- LOG 3
-        window.location.href =
-          "https://miles-to-merch-backend.onrender.com/auth/login/strava";
+        const backendUrl =
+          process.env.VUE_APP_BACKEND_URL || "http://localhost:5000";
+        window.location.href = `${backendUrl}/auth/login/strava`;
       }
     },
 

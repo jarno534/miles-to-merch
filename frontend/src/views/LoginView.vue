@@ -14,6 +14,11 @@
         <div v-if="error" class="error-message">{{ error }}</div>
         <button type="submit" class="submit-button">Login</button>
       </form>
+      <div class="strava-section">
+        <a href="http://localhost:5000/auth/login/strava" class="strava-button">
+          Connect with Strava
+        </a>
+      </div>
       <p class="switch-link">
         Don't have an account?
         <router-link to="/register">Register</router-link>
@@ -118,5 +123,25 @@ input {
 }
 .switch-link {
   margin-top: 20px;
+}
+.strava-section {
+  margin-top: 20px;
+  border-top: 1px solid #eee;
+  padding-top: 20px;
+}
+.strava-button {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  background-color: #fc4c02;
+  color: white;
+  text-decoration: none;
+  border-radius: 5px;
+  font-weight: bold;
+  font-size: 1.1em;
+  box-sizing: border-box;
+}
+.strava-button:hover {
+  background-color: #e34402;
 }
 </style>

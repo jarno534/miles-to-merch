@@ -35,6 +35,7 @@
 
       <div class="shipping-details">
         <h2>Shipping Information</h2>
+
         <div v-if="isProfileComplete" class="address-card">
           <p>
             <strong>{{ user.name }}</strong>
@@ -42,20 +43,28 @@
           <p>{{ user.shipping_address }}</p>
           <p>{{ user.shipping_city }}, {{ user.shipping_zip }}</p>
           <p>{{ user.shipping_country }}</p>
-          <router-link to="/profile" class="edit-link"
-            >Edit Address</router-link
+          <button
+            @click="showCompleteProfileModal = true"
+            class="edit-link-btn"
           >
+            Edit Details
+          </button>
         </div>
+
         <div v-else class="address-incomplete">
-          <p>
-            Your shipping information is incomplete. Please update your profile
-            before placing an order.
-          </p>
-          <router-link to="/profile" class="cta-button"
-            >Go to Profile</router-link
-          >
+          <p>⚠️ Shipping information missing.</p>
+          <button @click="showCompleteProfileModal = true" class="cta-button">
+            Complete Profile to Order
+          </button>
         </div>
       </div>
+
+      <CompleteProfileModal
+        v-if="showCompleteProfileModal && user"
+        :user="user"
+        @close="showCompleteProfileModal = false"
+        @saved="handleProfileSaved"
+      />
 
       <div class="payment-section">
         <button
@@ -72,8 +81,9 @@
 
 <script>
 import axios from "@/apiConfig.js";
-import { notifyError } from "../notifications";
+import { notifyError, notifySuccess } from "../notifications";
 import { loadStripe } from "@stripe/stripe-js";
+import CompleteProfileModal from "@/components/CompleteProfileModal.vue";
 
 export default {
   name: "CheckoutView",
@@ -93,8 +103,10 @@ export default {
       isPlacingOrder: false,
       stripePromise: null,
       quantity: 1,
+      showCompleteProfileModal: false,
     };
   },
+  components: { CompleteProfileModal },
 
   computed: {
     isProfileComplete() {
@@ -118,7 +130,7 @@ export default {
     this.stripePromise = loadStripe(process.env.VUE_APP_STRIPE_PUBLISHABLE_KEY);
     try {
       const [designRes, profileRes] = await Promise.all([
-        axios.get("/api/designs/${this.designId}", {
+        axios.get(`/api/designs/${this.designId}`, {
           withCredentials: true,
         }),
         axios.get("/api/profile", { withCredentials: true }),
@@ -136,7 +148,12 @@ export default {
 
   methods: {
     async placeOrder() {
-      if (!this.isProfileComplete || this.isPlacingOrder) return;
+      if (!this.isProfileComplete) {
+        this.showCompleteProfileModal = true;
+        return;
+      }
+      if (this.isPlacingOrder) return;
+
       this.isPlacingOrder = true;
       try {
         const response = await axios.post(
@@ -159,10 +176,24 @@ export default {
         }
       } catch (error) {
         console.error("Error creating checkout session:", error);
-        notifyError("Could not initiate payment. Please try again.");
+        if (
+          error.response &&
+          error.response.data &&
+          error.response.data.code === "PROFILE_INCOMPLETE"
+        ) {
+          notifyError("Please complete your profile first.");
+          this.showCompleteProfileModal = true;
+        } else {
+          notifyError("Could not initiate payment. Please try again.");
+        }
       } finally {
         this.isPlacingOrder = false;
       }
+    },
+    handleProfileSaved(updatedUser) {
+      this.user = updatedUser;
+      this.showCompleteProfileModal = false;
+      notifySuccess("Profile updated! You can now place your order.");
     },
   },
 };
@@ -241,11 +272,15 @@ h2 {
   margin: 4px 0;
 }
 
-.edit-link {
-  display: inline-block;
-  margin-top: 10px;
+.edit-link-btn {
+  background: none;
+  border: none;
   color: #007bff;
   font-weight: bold;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+  margin-top: 10px;
 }
 
 .address-incomplete {
@@ -254,16 +289,18 @@ h2 {
   padding: 15px;
   border-radius: 8px;
   border: 1px solid #ffeeba;
+  text-align: center;
 }
 
 .cta-button {
   display: inline-block;
-  margin-top: 15px;
+  margin-top: 10px;
   background-color: #007bff;
   color: white;
   padding: 10px 20px;
   border-radius: 5px;
-  text-decoration: none;
+  border: none;
+  cursor: pointer;
   font-weight: bold;
 }
 

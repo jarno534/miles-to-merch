@@ -68,7 +68,7 @@ export default {
 }
 .modal-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
   gap: 15px;
 }
 .modal-actions button {

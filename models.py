@@ -32,7 +32,8 @@ class User(db.Model):
             'id': self.id, 'email': self.email, 'name': self.name,
             'shipping_address': self.shipping_address, 'shipping_city': self.shipping_city,
             'shipping_zip': self.shipping_zip, 'shipping_country': self.shipping_country,
-            'has_strava_linked': self.strava_id is not None
+            'has_strava_linked': self.strava_id is not None,
+            'is_admin': self.is_admin
         }
 
     def __str__(self):
@@ -46,17 +47,23 @@ class Product(db.Model):
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=True)
     printful_product_id = db.Column(db.Integer, unique=True, nullable=False)
+    printful_name = db.Column(db.String(255), nullable=True) # Cached original name from Printful
     product_image_url = db.Column(db.String(255), nullable=True)
     variants = db.relationship('Variant', backref='product', lazy='dynamic', cascade="all, delete-orphan")
     print_areas = db.relationship('PrintArea', backref='product', lazy=True, cascade="all, delete-orphan")
 
-    def to_dict(self):
-        active_variants = self.variants.filter_by(is_active=True).all()
+    def to_dict(self, include_inactive=False):
+        if include_inactive:
+            variants_list = self.variants.all()
+        else:
+            variants_list = self.variants.filter_by(is_active=True).all()
+            
         return {
             'id': self.id, 'name': self.name, 'description': self.description,
             'printful_product_id': self.printful_product_id,
+            'printful_name': self.printful_name,
             'product_image_url': self.product_image_url,
-            'variants': [v.to_dict() for v in active_variants],
+            'variants': [v.to_dict(product_name=self.name) for v in variants_list],
             'print_areas': {p.placement: p.to_dict() for p in self.print_areas}
         }
 
@@ -80,14 +87,22 @@ class Variant(db.Model):
     image_base_path = db.Column(db.String(255), nullable=True)
     available_regions = db.Column(db.JSON, nullable=False)
     is_active = db.Column(db.Boolean, default=False, nullable=False)
+    
+    # New Fields for Admin
+    printful_price = db.Column(db.Float, nullable=True)
+    in_stock = db.Column(db.Boolean, default=True, nullable=True)
 
-    def to_dict(self):
+    def to_dict(self, product_name=None):
         return {
             'id': self.id, 'printful_variant_id': self.printful_variant_id,
-            'product_name': self.product.name, 'color': self.color,
+            'product_name': product_name or (self.product.name if self.product else "Unknown Product"),
+            'color': self.color,
             'color_code': self.color_code,
             'size': self.size,
-            'price': self.price, 'merch_color_type': self.merch_color_type,
+            'price': self.price, 
+            'printful_price': self.printful_price,
+            'in_stock': self.in_stock,
+            'merch_color_type': self.merch_color_type,
             'image': self.image,
             'image_urls': self.image_urls,
             'image_base_path': self.image_base_path
@@ -130,6 +145,7 @@ class Design(db.Model):
     def to_dict(self):
         return {
             'id': self.id, 'user_id': self.user_id, 'variant_id': self.variant_id,
+            'product_id': self.product_id, # Added missing field
             'preview_urls': self.preview_urls, 'design_data': self.design_data,
             'name': self.name, 'created_at': self.created_at.isoformat(),
             'variant': self.variant.to_dict() if self.variant else None
@@ -162,10 +178,18 @@ class Order(db.Model):
 
         product_image_url = None
         if self.design and self.design.preview_urls:
-            image_filename = self.design.preview_urls.get('front')
-            if image_filename:
-                from flask import url_for
-                product_image_url = url_for('static', filename=f'uploads/previews/{image_filename}', _external=True)
+            # preview_urls stores full URLs (as saved in api.py) or filenames (legacy).
+            # We prefer 'front', but take any available view if missing.
+            previews = self.design.preview_urls
+            if isinstance(previews, dict):
+                product_image_url = previews.get('front') or next(iter(previews.values()), None)
+            elif isinstance(previews, str):
+                product_image_url = previews
+                
+            # If it looks like a filename (no http), wrap it (Legacy fallback)
+            if product_image_url and not product_image_url.startswith('http'):
+                 from flask import url_for
+                 product_image_url = url_for('static', filename=f'uploads/designs/{product_image_url}', _external=True)
 
         return {
             'id': self.id, 'order_status': self.order_status, 'total_price': self.total_price,

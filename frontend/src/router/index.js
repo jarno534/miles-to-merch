@@ -74,6 +74,12 @@ const routes = [
     component: () => import("../views/MyOrdersView.vue"),
     meta: { requiresAuth: true },
   },
+  {
+    path: "/admin",
+    name: "AdminProducts",
+    component: () => import("../views/AdminProducts.vue"),
+    meta: { requiresAuth: true, requiresAdmin: true },
+  },
 ];
 
 const router = createRouter({
@@ -88,6 +94,8 @@ router.beforeEach(async (to, from, next) => {
 
   if (to.meta.requiresAuth && !auth.isLoggedIn) {
     next({ name: "Login", query: { redirect: to.fullPath } });
+  } else if (to.meta.requiresAdmin && (!auth.user || !auth.user.is_admin)) {
+    next({ name: "home" }); // Redirect non-admins to home
   } else {
     next();
   }

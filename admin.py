@@ -102,10 +102,10 @@ class VariantAdminView(SecuredModelView):
         return ""
     column_list = ('id', 'product.name', 'image', 'color', 'color_code', 'size', 'price', 'is_active', 'merch_color_type', 'image_base_path', 'image_urls')
     column_formatters = {'image': _image_formatter}
-    form_columns = ('product', 'color', 'color_code', 'size', 'price', 'is_active', 'merch_color_type', 'image', 'image_urls', 'image_base_path')
+    form_columns = ('product', 'color', 'color_code', 'size', 'price', 'is_active', 'merch_color_type', 'id')
     column_editable_list = ['is_active', 'price', 'merch_color_type']
     column_filters = ['is_active', 'color', 'size', 'product.name', 'merch_color_type']
-    column_searchable_list = ['color', 'size', 'product.name']
+    column_searchable_list = ['id', 'color', 'size', 'product.name']
     page_size = 100
 
     def on_form_prefill(self, form, id):
