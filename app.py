@@ -58,6 +58,23 @@ def create_app(config_class=Config):
             return session_content
         except Exception as e:
             return f"Fout bij het lezen van de sessie: {e}"
+    @app.route('/debug-products')
+    def debug_products():
+        import traceback
+        try:
+            from models import Product
+            products = Product.query.all()
+            result = []
+            for p in products:
+                try:
+                    d = p.to_dict()
+                    result.append({'id': p.id, 'name': p.name, 'ok': True})
+                except Exception as e2:
+                    result.append({'id': p.id, 'name': p.name, 'error': str(e2)})
+            return jsonify({'count': len(products), 'products': result})
+        except Exception as e:
+            return jsonify({'error': str(e), 'traceback': traceback.format_exc()}), 500
+
     return app
 
 app = create_app()
