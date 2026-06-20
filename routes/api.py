@@ -10,6 +10,7 @@ import os
 from uuid import uuid4
 import stripe
 from utils.gpx_parser import parse_gpx_to_strava_format
+from sqlalchemy.orm.attributes import flag_modified
 
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 
@@ -866,3 +867,4 @@ def get_order_by_session_id(session_id):
         order_data['product_image_url'] = image_url
 
     return jsonify(order_data)
+

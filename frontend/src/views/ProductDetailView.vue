@@ -139,9 +139,21 @@ export default {
 
     availableSizes() {
       if (!this.selectedColor || !this.product?.variants) return [];
-      return this.product.variants
+      const sizes = this.product.variants
         .filter((v) => v.color === this.selectedColor)
         .map((v) => v.size);
+
+      const sizeOrder = ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"];
+
+      return sizes.sort((a, b) => {
+        const indexA = sizeOrder.indexOf(a);
+        const indexB = sizeOrder.indexOf(b);
+
+        if (indexA === -1 && indexB === -1) return a.localeCompare(b);
+        if (indexA === -1) return 1;
+        if (indexB === -1) return -1;
+        return indexA - indexB;
+      });
     },
 
     selectedVariant() {
@@ -169,12 +181,17 @@ export default {
   methods: {
     getImageUrl(variant) {
       if (!variant) return "";
+      // Prioritize specific variant image (from Printful) if available
+      if (variant.image) {
+        return variant.image;
+      }
+      // Fallback to local generic image if no specific image
       if (variant.image_base_path) {
         const filename =
           variant.image_base_path === "mug" ? "center.jpg" : "front.jpg";
         return `/${variant.image_base_path}/${filename}`;
       }
-      return variant.image || "";
+      return "";
     },
 
     selectColor(colorName) {

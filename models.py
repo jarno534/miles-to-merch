@@ -51,6 +51,9 @@ class Product(db.Model):
     product_image_url = db.Column(db.String(255), nullable=True)
     variants = db.relationship('Variant', backref='product', lazy='dynamic', cascade="all, delete-orphan")
     print_areas = db.relationship('PrintArea', backref='product', lazy=True, cascade="all, delete-orphan")
+    
+    # Phase 3: Sponsored Settings
+    sponsored_settings = db.Column(db.JSON, default={}) # Stores { 'sleeve_left': {'enabled': True, 'discount': 5.0} }
 
     def to_dict(self, include_inactive=False):
         if include_inactive:
@@ -64,7 +67,8 @@ class Product(db.Model):
             'printful_name': self.printful_name,
             'product_image_url': self.product_image_url,
             'variants': [v.to_dict(product_name=self.name) for v in variants_list],
-            'print_areas': {p.placement: p.to_dict() for p in self.print_areas}
+            'print_areas': {p.placement: p.to_dict() for p in self.print_areas},
+            'sponsored_settings': self.sponsored_settings
         }
 
     def __str__(self):
@@ -85,6 +89,10 @@ class Variant(db.Model):
     image = db.Column(db.String(255), nullable=True)
     image_urls = db.Column(db.JSON, nullable=True, default=lambda: {"mockup": None, "template": None})
     image_base_path = db.Column(db.String(255), nullable=True)
+    
+    # Phase 3: Advanced Editor
+    print_areas = db.Column(db.JSON, default={})  # Stores { 'front': {width, height, top, left, background_mockup}, ... }
+
     available_regions = db.Column(db.JSON, nullable=False)
     is_active = db.Column(db.Boolean, default=False, nullable=False)
     
@@ -105,7 +113,10 @@ class Variant(db.Model):
             'merch_color_type': self.merch_color_type,
             'image': self.image,
             'image_urls': self.image_urls,
-            'image_base_path': self.image_base_path
+            'image': self.image,
+            'image_urls': self.image_urls,
+            'image_base_path': self.image_base_path,
+            'print_areas': self.print_areas or {}
         }
 
 class PrintArea(db.Model):

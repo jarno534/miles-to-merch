@@ -35,12 +35,23 @@ def probe_product(product_id):
     
     
     # Check 'files' in product
-    files = data.get('product', {}).get('files', [])
-    print(f"\nProduct Files (Placements): {json.dumps(files, indent=2)}")
+    # Files print removed
+
     
+    # Fetch Store ID (Required for templates)
+    print("Fetching Store ID...")
+    store_id = 16718510
+    print(f"Using Hardcoded Store ID: {store_id}")
+
+
     # Check Mockup Templates Endpoint (Often has print area sizes)
     print("\n--- Checking /mockup-generator/templates/{id} ---")
-    r2 = requests.get(f"https://api.printful.com/mockup-generator/templates/{product_id}", headers=HEADERS)
+    
+    # Try query param instead of header
+    url = f"https://api.printful.com/mockup-generator/templates/{product_id}?store_id={store_id}"
+    print(f"Requesting: {url}")
+    r2 = requests.get(url, headers=HEADERS)
+    print(f"Status: {r2.status_code}")
     if r2.status_code == 200:
         tpl_data = r2.json().get('result', {})
         print(f"Template Keys: {list(tpl_data.keys())}")
@@ -55,6 +66,13 @@ def probe_product(product_id):
              
         # Check variant_mapping to see if sizes map to specific templates
         print(f"Variant Mapping count: {len(tpl_data.get('variant_mapping', []))}")
+        
+        output_path = r'd:\Miles to Merch\probe_output.json'
+        with open(output_path, 'w') as f:
+            json.dump(tpl_data, f, indent=2)
+            print(f"Dumped full template data to {output_path}")
+    else:
+        print(f"Error fetching templates: {r2.text}")
              
 if __name__ == '__main__':
     probe_product(71)

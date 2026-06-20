@@ -19,6 +19,63 @@
           >
         </button>
       </div>
+
+      <!-- Product Color & Size Selection -->
+      <template
+        v-if="
+          editorProductData &&
+          editorProductData.variants &&
+          editorProductData.variants.length > 0
+        "
+      >
+        <div class="variant-controls">
+          <!-- Color -->
+          <div class="control-group">
+            <label>Product Color:</label>
+
+            <div class="custom-dropdown" :class="{ open: isColorDropdownOpen }">
+              <!-- Header / Selected Value -->
+              <div class="dropdown-header" @click="toggleColorDropdown">
+                <div v-if="selectedColor" class="dropdown-value">
+                  <span
+                    class="color-swatch-small"
+                    :style="{ backgroundColor: getSwatchColor(selectedColor) }"
+                  ></span>
+                  <span>{{ selectedColor }}</span>
+                </div>
+                <div v-else class="dropdown-value placeholder">
+                  Select Color
+                </div>
+                <span class="dropdown-arrow">▼</span>
+              </div>
+
+              <!-- Options List -->
+              <div v-if="isColorDropdownOpen" class="dropdown-list">
+                <div
+                  v-for="color in availableColors"
+                  :key="color.name"
+                  class="dropdown-item"
+                  :class="{ selected: selectedColor === color.name }"
+                  @click="selectCustomColor(color.name)"
+                >
+                  <span
+                    class="color-swatch-small"
+                    :style="{ backgroundColor: color.code || color.name }"
+                  ></span>
+                  <span>{{ color.name }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Overlay to close on click outside (optional, simplified) -->
+            <div
+              v-if="isColorDropdownOpen"
+              class="dropdown-backdrop"
+              @click="isColorDropdownOpen = false"
+            ></div>
+          </div>
+        </div>
+      </template>
     </div>
 
     <h2>Design Elements</h2>
@@ -1305,11 +1362,13 @@ export default {
   props: {
     editorProductData: Object,
     activePlacement: String,
+    activeVariantId: Number, // NEW
     selection: { type: Object, required: true },
     activityData: Object,
     availableGraphSources: Array,
     activityPhotos: Array,
     weatherData: Object,
+    availablePlacements: Object,
 
     design: {
       type: Object,
@@ -1320,6 +1379,7 @@ export default {
   emits: [
     "select-element",
     "update:activePlacement",
+    "update:activeVariantId", // NEW
     "update:mapSettings",
     "update:dataFields",
     "update:achievements",
@@ -1336,6 +1396,7 @@ export default {
     "hide-data-fields",
     "zoom-in",
     "zoom-out",
+    "trigger-upload",
   ],
 
   data() {
@@ -1346,6 +1407,7 @@ export default {
       draggedBadge: null,
       dropTargetBadge: null,
       localCustomLink: "",
+      isColorDropdownOpen: false, // NEW
     };
   },
 
@@ -1379,25 +1441,6 @@ export default {
       return this.design.achievements || [];
     },
 
-    availablePlacements() {
-      if (!this.editorProductData || !this.editorProductData.print_areas) {
-        return {};
-      }
-      const placements = this.editorProductData.print_areas;
-      const sortedKeys = Object.keys(placements).sort((a, b) => {
-        const priceA = placements[a].price || 0;
-        const priceB = placements[b].price || 0;
-        if (a === "front" && priceA === 0) return -1;
-        if (b === "front" && priceB === 0) return 1;
-        return priceA - priceB;
-      });
-      const sortedPlacements = {};
-      for (const key of sortedKeys) {
-        sortedPlacements[key] = placements[key];
-      }
-      return sortedPlacements;
-    },
-
     isStravaActivity() {
       return this.activityData?.details?.source !== "gpx";
     },
@@ -1417,6 +1460,41 @@ export default {
         return this.graphElements.find((g) => g.id === this.selection.item.id);
       }
       return null;
+    },
+
+    activeVariant() {
+      if (!this.editorProductData?.variants || !this.activeVariantId)
+        return null;
+      return this.editorProductData.variants.find(
+        (v) => v.id === this.activeVariantId
+      );
+    },
+
+    selectedColor() {
+      return this.activeVariant?.color || "";
+    },
+
+    selectedSize() {
+      return this.activeVariant?.size || "";
+    },
+
+    availableColors() {
+      if (!this.editorProductData?.variants) return [];
+      const map = new Map();
+      this.editorProductData.variants.forEach((v) => {
+        if (!map.has(v.color)) {
+          map.set(v.color, { name: v.color, code: v.color_code || "#fff" });
+        }
+      });
+      return Array.from(map.values());
+    },
+
+    availableSizes() {
+      if (!this.selectedColor || !this.editorProductData?.variants) return [];
+      // Filter variants by selected color, then extract sizes
+      return this.editorProductData.variants
+        .filter((v) => v.color === this.selectedColor)
+        .map((v) => v.size); // Helper: we might want to sort these (S, M, L, XL)
     },
 
     selectedTextBox() {
@@ -1496,6 +1574,50 @@ export default {
 
       const updatedElement = { ...this.weatherElement, [property]: value };
       this.$emit("update:weatherElement", updatedElement);
+    },
+
+    toggleColorDropdown() {
+      this.isColorDropdownOpen = !this.isColorDropdownOpen;
+    },
+
+    selectCustomColor(colorName) {
+      this.handleColorChange(colorName);
+      this.isColorDropdownOpen = false;
+    },
+
+    getSwatchColor(colorName) {
+      const c = this.availableColors.find((c) => c.name === colorName);
+      return c ? c.code || c.name : "transparent";
+    },
+
+    handleColorChange(newColor) {
+      if (!this.editorProductData?.variants) return;
+
+      // Find valid variants for this color
+      const variants = this.editorProductData.variants.filter(
+        (v) => v.color === newColor
+      );
+      if (variants.length === 0) return;
+
+      // Try to keep same size if possible
+      let match = variants.find((v) => v.size === this.selectedSize);
+      if (!match) match = variants[0]; // Fallback to first available size
+
+      if (match) {
+        this.$emit("update:activeVariantId", match.id);
+      }
+    },
+
+    handleSizeChange(newSize) {
+      if (!this.editorProductData?.variants || !this.selectedColor) return;
+
+      const match = this.editorProductData.variants.find(
+        (v) => v.color === this.selectedColor && v.size === newSize
+      );
+
+      if (match) {
+        this.$emit("update:activeVariantId", match.id);
+      }
     },
 
     updateMapSetting(key, value) {
@@ -2152,5 +2274,149 @@ label.sidebar-button {
   box-shadow: 0 0 0 1px #888;
   align-self: center;
   justify-self: center;
+}
+.variant-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  text-align: left;
+}
+
+.control-group label {
+  font-weight: 600;
+  font-size: 0.9em;
+  color: #555;
+}
+
+.control-group select {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.95em;
+  background: white;
+}
+
+.custom-dropdown {
+  position: relative;
+  width: 100%;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+  user-select: none;
+}
+
+.custom-dropdown.open {
+  border-color: #007bff;
+}
+
+.dropdown-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  min-height: 40px;
+}
+
+.dropdown-value {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dropdown-value.placeholder {
+  color: #888;
+}
+
+.dropdown-arrow {
+  font-size: 0.8em;
+  color: #666;
+}
+
+.dropdown-list {
+  position: absolute;
+  top: 105%;
+  left: 0;
+  width: 100%;
+  max-height: 200px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  transition: background 0.2s;
+}
+
+.dropdown-item:hover {
+  background-color: #f5f5f5;
+}
+
+.dropdown-item.selected {
+  background-color: #e6f2ff;
+  font-weight: 500;
+}
+
+.color-swatch-small {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+  display: inline-block;
+}
+
+.dropdown-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 999;
+  cursor: default;
+}
+
+.color-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 15px;
+}
+
+.color-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9em;
+}
+
+.color-button.active {
+  border-color: #fc4c02;
+  background: #fff5f2;
+}
+
+.color-swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.1);
 }
 </style>

@@ -10,20 +10,41 @@
       <p>Loading activity data...</p>
     </div>
 
+    <!-- Zoom Controls -->
+    <div class="canvas-zoom-controls" v-if="!loading">
+      <button @click="increaseZoom" class="zoom-btn">+</button>
+      <input
+        type="range"
+        v-model.number="zoomLevel"
+        min="0.5"
+        max="3.0"
+        step="0.1"
+        orient="vertical"
+        class="zoom-slider"
+      />
+      <button @click="decreaseZoom" class="zoom-btn">-</button>
+    </div>
+
     <div
-      v-else
+      v-if="!loading"
       class="mockup-container"
       ref="tshirtMockup"
-      :style="{ aspectRatio: backgroundAspectRatio }"
+      :style="mockupStyle"
     >
+      <!-- Inner debug removed -->
       <img
-        v-if="backgroundImageUrl"
         :src="backgroundImageUrl"
-        alt="Product template"
+        crossorigin="anonymous"
         class="background-image"
         ref="backgroundImage"
         @load="onImageLoad"
       />
+      <!-- Tint Overlay -->
+      <div
+        v-if="backgroundImageUrl && selectedVariant?.color_code"
+        class="tint-overlay"
+        :style="tintOverlayStyle"
+      ></div>
       <div
         class="design-area-container"
         ref="designArea"
@@ -379,10 +400,10 @@ export default {
       required: true,
       default: () => ({ type: null, item: null }),
     },
-
     loading: Boolean,
     activityData: Object,
     weatherData: Object,
+    editorProductData: Object,
 
     design: {
       type: Object,
@@ -397,6 +418,7 @@ export default {
     "update-map-instance",
     "update-graph-autorange",
     "update-element-property",
+    "update:activeVariantId",
   ],
 
   data() {
@@ -407,10 +429,13 @@ export default {
       currentTileLayer: null,
       mapPolylines: [],
       activeInteraction: { element: null, type: null, direction: null },
+      zoomLevel: 1.0,
       initialMouse: { x: 0, y: 0 },
       initialElementState: { x: 0, y: 0, width: 0, height: 0 },
       minSize: 50,
 
+      isDragging: false,
+      resizeHandle: null,
       resizeHandles: [
         "top-left",
         "top",
@@ -421,14 +446,83 @@ export default {
         "bottom-left",
         "left",
       ],
+      maskUrl: null, // NEW
     };
   },
 
   computed: {
-    // --- Adapter for Design State ---
+    tintOverlayStyle() {
+      if (!this.selectedVariant?.color_code || !this.maskUrl) return {};
+
+      const maskStyle = `url(${this.maskUrl})`;
+
+      return {
+        backgroundColor: this.selectedVariant.color_code,
+        mixBlendMode: "multiply",
+        maskImage: maskStyle,
+        WebkitMaskImage: maskStyle,
+        maskSize: "contain",
+        WebkitMaskSize: "contain",
+        maskPosition: "center",
+        WebkitMaskPosition: "center",
+        maskRepeat: "no-repeat",
+        WebkitMaskRepeat: "no-repeat",
+      };
+    },
+
     mapElement() {
       return this.design.mapElement;
     },
+
+    mockupStyle() {
+      const style = {
+        aspectRatio: this.backgroundAspectRatio || "1/1",
+        transform: `scale(${this.zoomLevel})`,
+        transformOrigin: "center center",
+      };
+
+      if (
+        this.printAreaData &&
+        typeof this.printAreaData.left === "number" &&
+        typeof this.printAreaData.width === "number" &&
+        typeof this.printAreaData.top === "number" &&
+        typeof this.printAreaData.height === "number" &&
+        this.printAreaData.mockup_width &&
+        this.printAreaData.mockup_height
+      ) {
+        // Normalize pixels to percentages
+        const mw = this.printAreaData.mockup_width;
+        const mh = this.printAreaData.mockup_height;
+
+        const leftPct = (this.printAreaData.left / mw) * 100;
+        const widthPct = (this.printAreaData.width / mw) * 100;
+        const topPct = (this.printAreaData.top / mh) * 100;
+        const heightPct = (this.printAreaData.height / mh) * 100;
+
+        // Calculate center of print area (in % relative to mockup)
+        const cx = leftPct + widthPct / 2;
+        const cy = topPct + heightPct / 2;
+
+        // Calculate offset needed to bring (cx, cy) to (50, 50)
+        const dx = 50 - cx;
+        const dy = 50 - cy;
+
+        style.transformOrigin = `${cx}% ${cy}%`;
+        // Apply translate first, then scale
+        style.transform = `translate(${dx}%, ${dy}%) scale(${this.zoomLevel})`;
+      } else {
+        // Log warning if expected data is missing but object exists
+        if (this.printAreaData) {
+          console.warn(
+            "DEBUG: printAreaData exists but missing dimensions or mockup size:",
+            this.printAreaData
+          );
+        }
+      }
+
+      return style;
+    },
+
     mapSettings() {
       return this.design.mapSettings;
     },
@@ -465,18 +559,13 @@ export default {
       if (!this.printAreaData) return { display: "none" };
       const { width, height, top, left, mockup_width, mockup_height } =
         this.printAreaData;
-      if (!width || !height || !mockup_width || !mockup_height) {
-        return { width: "45%", height: "60%" }; // Fallback
-      }
-      const widthPercent = (width / mockup_width) * 100;
-      const heightPercent = (height / mockup_height) * 100;
-      const topPercent = (top / mockup_height) * 100;
-      const leftPercent = (left / mockup_width) * 100;
+
       return {
-        width: `${widthPercent}%`,
-        height: `${heightPercent}%`,
-        top: `${topPercent}%`,
-        left: `${leftPercent}%`,
+        width: `${(width / mockup_width) * 100}%`,
+        height: `${(height / mockup_height) * 100}%`,
+        top: `${(top / mockup_height) * 100}%`,
+        left: `${(left / mockup_width) * 100}%`,
+        position: "absolute",
       };
     },
 
@@ -571,6 +660,22 @@ export default {
       return scheme ? scheme.label : "";
     },
 
+    // --- Canvas Color Selector Logic ---
+    availableColors() {
+      if (!this.editorProductData?.variants) return [];
+      const map = new Map();
+      this.editorProductData.variants.forEach((v) => {
+        if (!map.has(v.color)) {
+          map.set(v.color, { name: v.color, code: v.color_code || "#fff" });
+        }
+      });
+      return Array.from(map.values());
+    },
+
+    selectedColor() {
+      return this.selectedVariant?.color || "";
+    },
+
     getBadgeListStyle() {
       const el = this.badgeListElement;
       const style = {
@@ -599,6 +704,12 @@ export default {
   },
 
   watch: {
+    backgroundImageUrl() {
+      // Reset and regenerate when URL changes
+      this.maskUrl = null;
+      this.generateMask();
+    },
+
     loading(isLoading, wasLoading) {
       if (wasLoading && !isLoading) {
         this.$nextTick(() => {
@@ -649,13 +760,48 @@ export default {
       },
       deep: true,
     },
+    printAreaData: {
+      immediate: true,
+      handler(val) {
+        console.log("DEBUG: printAreaData updated in Canvas:", val);
+        if (val && val.image_url) {
+          console.log("DEBUG: Background Image URL:", val.image_url);
+        } else {
+          console.log("DEBUG: No image_url found in printAreaData");
+        }
+      },
+    },
+    mockupStyle(val) {
+      console.log("DEBUG: mockupStyle:", val);
+    },
   },
 
   methods: {
-    onImageLoad(event) {
-      const img = event.target;
-      if (img.naturalWidth > 0 && img.naturalHeight > 0) {
-        this.backgroundAspectRatio = `${img.naturalWidth} / ${img.naturalHeight}`;
+    increaseZoom() {
+      if (this.zoomLevel < 3.0)
+        this.zoomLevel = +(this.zoomLevel + 0.1).toFixed(1);
+    },
+    decreaseZoom() {
+      if (this.zoomLevel > 0.5)
+        this.zoomLevel = +(this.zoomLevel - 0.1).toFixed(1);
+    },
+
+    handleCanvasColorChange(newColor) {
+      if (!this.editorProductData?.variants) return;
+
+      const currentSize = this.selectedVariant?.size;
+      // Find valid variants for this color
+      const variants = this.editorProductData.variants.filter(
+        (v) => v.color === newColor
+      );
+      if (variants.length === 0) return;
+
+      // Try to keep same size
+      let match = variants.find((v) => v.size === currentSize);
+      if (!match) match = variants[0];
+
+      if (match) {
+        this.$emit("update:activeVariantId", match.id);
       }
     },
 
@@ -806,17 +952,29 @@ export default {
     },
 
     drag(event) {
-      if (!this.$refs.tshirtMockup) return;
-      const canvasRect = this.$refs.tshirtMockup.getBoundingClientRect();
+      if (!this.$refs.designArea) return;
+
+      // Use Design Area for bounds, not the whole mockup
+      const containerRect = this.$refs.designArea.getBoundingClientRect();
       const el = this.activeInteraction.element;
-      const movementX = event.clientX - this.initialMouse.x;
-      const movementY = event.clientY - this.initialMouse.y;
+
+      // Adjust movement for zoom level
+      const movementX = (event.clientX - this.initialMouse.x) / this.zoomLevel;
+      const movementY = (event.clientY - this.initialMouse.y) / this.zoomLevel;
+
       let newX = this.initialElementState.x + movementX;
       let newY = this.initialElementState.y + movementY;
-      const minX = -(canvasRect.width / 2) + el.width / 2;
-      const maxX = canvasRect.width / 2 - el.width / 2;
-      const minY = -(canvasRect.height / 2) + el.height / 2;
-      const maxY = canvasRect.height / 2 - el.height / 2;
+
+      // Constraints (assuming x=0, y=0 is Center of Design Area)
+      // Max range is +/- (ContainerWidth/2 - ElementWidth/2)
+      const halfContainerW = containerRect.width / 2 / this.zoomLevel;
+      const halfContainerH = containerRect.height / 2 / this.zoomLevel;
+
+      const minX = -halfContainerW + el.width / 2;
+      const maxX = halfContainerW - el.width / 2;
+      const minY = -halfContainerH + el.height / 2;
+      const maxY = halfContainerH - el.height / 2;
+
       el.x = Math.max(minX, Math.min(maxX, newX));
       el.y = Math.max(minY, Math.min(maxY, newY));
     },
@@ -855,6 +1013,88 @@ export default {
         element.height = newHeight;
         element.y = newY;
       }
+    },
+
+    onImageLoad(event) {
+      // Trigger mask generation when the main image loads
+      const img = event.target || this.$refs.backgroundImage;
+      if (img && img.naturalWidth > 0 && img.naturalHeight > 0) {
+        this.backgroundAspectRatio = `${img.naturalWidth} / ${img.naturalHeight}`;
+      }
+      this.generateMask();
+    },
+
+    generateMask() {
+      if (!this.backgroundImageUrl) {
+        this.maskUrl = null;
+        return;
+      }
+
+      const img = new Image();
+      img.crossOrigin = "Anonymous";
+      img.src = this.backgroundImageUrl;
+
+      img.onload = () => {
+        try {
+          const canvas = document.createElement("canvas");
+          canvas.width = img.naturalWidth;
+          canvas.height = img.naturalHeight;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0);
+
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const data = imageData.data;
+
+          // Flood Fill to remove background only (preserving inner whites)
+          const width = canvas.width;
+          const height = canvas.height;
+          const visited = new Uint8Array(width * height); // Keep track of visited pixels
+          const stack = [
+            [0, 0],
+            [width - 1, 0],
+            [0, height - 1],
+            [width - 1, height - 1],
+          ]; // Start from corners
+
+          const getPixelIndex = (x, y) => (y * width + x) * 4;
+          const isWhite = (i) => {
+            return data[i] > 240 && data[i + 1] > 240 && data[i + 2] > 240;
+          };
+
+          while (stack.length > 0) {
+            const [x, y] = stack.pop();
+            const idx = y * width + x;
+
+            if (x < 0 || x >= width || y < 0 || y >= height || visited[idx])
+              continue;
+
+            visited[idx] = 1;
+            const pixelPos = idx * 4;
+
+            if (isWhite(pixelPos)) {
+              // Make transparent
+              data[pixelPos + 3] = 0;
+
+              // Add neighbors
+              stack.push([x + 1, y]);
+              stack.push([x - 1, y]);
+              stack.push([x, y + 1]);
+              stack.push([x, y - 1]);
+            }
+          }
+
+          ctx.putImageData(imageData, 0, 0);
+          this.maskUrl = canvas.toDataURL("image/png");
+        } catch (e) {
+          console.warn("Mask generation failed:", e);
+          this.maskUrl = null;
+        }
+      };
+
+      img.onerror = (e) => {
+        console.warn("Mask source image failed to load:", e);
+        this.maskUrl = null;
+      };
     },
 
     initializeMap() {
@@ -1348,12 +1588,55 @@ export default {
 }
 
 .editor-canvas-container {
-  flex-grow: 1;
-  display: flex;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden; /* Prevent scrolling */
+  display: flex; /* Center content */
   justify-content: center;
   align-items: center;
-  padding: 0;
-  min-height: 0;
+  background-color: #ffffff;
+  user-select: none;
+}
+
+.canvas-zoom-controls {
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: white;
+  padding: 10px 5px;
+  border-radius: 20px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.zoom-btn {
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: #fff;
+  font-size: 1.2em;
+  font-weight: bold;
+  cursor: pointer;
+  border-radius: 50%;
+  color: #333;
+}
+.zoom-btn:hover {
+  background: #f5f5f5;
+}
+
+.zoom-slider {
+  writing-mode: bt-lr; /* IE/Edge */
+  -webkit-appearance: slider-vertical; /* Webkit */
+  appearance: slider-vertical; /* Standard */
+  width: 8px;
+  height: 100px;
+  margin: 10px 0;
+  cursor: pointer;
 }
 
 .mockup-container {
@@ -1364,6 +1647,7 @@ export default {
   display: flex;
   justify-content: center;
   align-items: center;
+  transform-origin: center center;
 }
 
 .background-image {
@@ -1374,6 +1658,16 @@ export default {
   height: 100%;
   object-fit: contain;
   z-index: 0;
+  pointer-events: none;
+}
+
+.tint-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
   pointer-events: none;
 }
 
@@ -1692,9 +1986,6 @@ export default {
   color: #333;
   resize: none;
   text-align: left;
-}
-
-.weather-area {
 }
 
 .weather-content {

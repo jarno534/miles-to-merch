@@ -10,7 +10,10 @@
       :activity-photos="activityPhotos"
       :weather-data="weatherData"
       :active-placement="currentView"
+      :active-variant-id="selectedVariant ? selectedVariant.id : null"
+      :available-placements="sidebarPlacements"
       @update:activePlacement="switchView"
+      @update:activeVariantId="handleVariantChange"
       @select-element="selectElement"
       @add-element="(type) => addElement(type, createDefaultElement(type))"
       @remove-element="(item) => removeElement(item.id.split('_')[0], item.id)"
@@ -32,23 +35,17 @@
       @pan-map="handlePan"
       @zoom-in="handleZoomIn"
       @zoom-out="handleZoomOut"
+      @trigger-upload="triggerUpload"
     />
 
     <div class="editor-center-area">
-      <!-- View Switcher Tabs -->
-      <div
-        class="view-switcher"
-        v-if="editorProductData && editorProductData.print_areas"
-      >
-        <button
-          v-for="(area, key) in editorProductData.print_areas"
-          :key="key"
-          :class="['view-tab', { active: currentView === key }]"
-          @click="switchView(key)"
-        >
-          {{ area.name || key }}
-        </button>
-      </div>
+      <input
+        type="file"
+        ref="gpxFile"
+        accept=".gpx"
+        @change="handleFileUpload"
+        style="display: none"
+      />
 
       <div class="canvas-wrapper">
         <EditorCanvas
@@ -56,7 +53,8 @@
           :design="currentDesign"
           :loading="loading"
           :activity-data="activityData"
-          :select-variant="selectedVariant"
+          :selected-variant="selectedVariant"
+          :editor-product-data="editorProductData"
           :print-area-data="currentPrintArea"
           :selection="selection"
           :weather-data="weatherData"
@@ -65,6 +63,7 @@
           @update-element-geometry="handleUpdateElementGeometry"
           @update-element-property="handleUpdateElementProperty"
           @update-map-instance="(instance) => (mapInstance = instance)"
+          @update:activeVariantId="handleVariantChange"
         />
       </div>
     </div>
@@ -137,6 +136,7 @@ import {
   formatElevation,
 } from "@/utils/formatters";
 
+// --- Props & Route ---
 const props = defineProps({
   productId: { type: [String, Number], required: true },
   activityId: { type: [String, Number], required: true },
@@ -184,38 +184,135 @@ const { analyzeAchievements: analyzeAchievementsLogic } = useAchievements();
 
 // --- Computed ---
 
-const selectedVariantId = computed(() => {
-  return parseInt(localStorage.getItem("selectedVariantId"));
-});
+const selectedVariantId = ref(
+  parseInt(localStorage.getItem("selectedVariantId")) || null
+);
 
 const selectedVariant = computed(() => {
   if (!editorProductData.value || !editorProductData.value.variants)
     return null;
-  return editorProductData.value.variants.find(
+
+  // Debug Logging
+  console.log("DEBUG: Computing selectedVariant...");
+  console.log("DEBUG: selectedVariantId (ref):", selectedVariantId.value);
+  console.log(
+    "DEBUG: LocalStorage selectedVariantId:",
+    localStorage.getItem("selectedVariantId")
+  );
+
+  // If no ID selected, pick first active one
+  if (!selectedVariantId.value) {
+    console.log("DEBUG: No ID, falling back to first variant.");
+    return editorProductData.value.variants[0];
+  }
+  const found = editorProductData.value.variants.find(
     (v) => v.id === selectedVariantId.value
   );
+
+  console.log("DEBUG: Found variant:", found ? found.color : "None");
+  return found || editorProductData.value.variants[0]; // Fallback
 });
+
+function handleVariantChange(newId) {
+  console.log("DEBUG: handleVariantChange called with:", newId);
+  selectedVariantId.value = newId;
+  localStorage.setItem("selectedVariantId", newId);
+}
 
 const currentPrintArea = computed(() => {
-  if (
-    !editorProductData.value ||
-    !editorProductData.value.print_areas ||
-    !currentView.value
-  )
-    return null;
+  let printArea = null;
 
-  const printArea = editorProductData.value.print_areas[currentView.value];
+  // 1. Haal de coördinaten op (gebruikt de 3000x3000px grid uit jouw data)
+  if (selectedVariant.value?.print_areas?.[currentView.value]) {
+    printArea = selectedVariant.value.print_areas[currentView.value];
+  } else if (editorProductData.value?.print_areas?.[currentView.value]) {
+    printArea = editorProductData.value.print_areas[currentView.value];
+  }
+
   if (!printArea) return null;
 
-  // Enhance with variant specific image if available
-  if (selectedVariant.value && selectedVariant.value.image_base_path) {
-    return {
-      ...printArea,
-      image_url: `/${selectedVariant.value.image_base_path}/${currentView.value}.jpg`,
-    };
-  }
-  return printArea;
+  // 2. Gebruik ALTIJD de image_url uit de print_area (de witte Ghost PNG)
+  // We negeren hier de selectedVariant.value.image (de JPG)
+  return {
+    ...printArea,
+    image_url: printArea.image_url,
+  };
 });
+
+const availableViews = computed(() => {
+  // Merge views from Variant and Product
+  const views = new Set();
+
+  // Variant specific views
+  if (selectedVariant.value && selectedVariant.value.print_areas) {
+    Object.keys(selectedVariant.value.print_areas).forEach((k) => views.add(k));
+  }
+
+  // Product default views (fallback or superset)
+  if (editorProductData.value && editorProductData.value.print_areas) {
+    Object.keys(editorProductData.value.print_areas).forEach((k) =>
+      views.add(k)
+    );
+  }
+
+  // Sort logic? Front first
+  const sorted = Array.from(views).sort((a, b) => {
+    if (a === "front") return -1;
+    if (b === "front") return 1;
+    return a.localeCompare(b);
+  });
+
+  return sorted;
+});
+
+const sidebarPlacements = computed(() => {
+  const placements = {};
+  const extraCost = 5.0; // Hardcoded for now, or fetch from settings
+
+  // Determine which views are "active" (have content)
+  // This helps if we want dynamic "first one is free" logic
+  // For now, let's assume 'front' is base, others are extra.
+  // Or: If you select a view, it adds to cost.
+
+  availableViews.value.forEach((view) => {
+    let price = 0;
+    // Simple logic: Front is base. Others +5.
+    // Refined logic based on user request "after first is edited":
+    // This implies flexible starting point.
+    // Let's stick to: Non-front views cost extra for now (simplest interpretation of Printful usually)
+    // UNLESS we check what's edited.
+
+    // User Quote: "how much an extra print surface costs after the first print surface is edited"
+    // This implies dynamic.
+    // Let activeViews = count of views with >0 elements.
+    // But we need to show the price on the BUTTON.
+    // "Front (Included)", "Back (+€5.00)"
+
+    if (view !== "front") {
+      price = extraCost;
+    }
+
+    placements[view] = {
+      name: getPlacementName(view),
+      price: price,
+      key: view,
+    };
+  });
+  return placements;
+});
+
+function getPlacementName(key) {
+  // Helper to get name from product data or format key
+  if (
+    editorProductData.value &&
+    editorProductData.value.print_areas &&
+    editorProductData.value.print_areas[key]
+  ) {
+    return editorProductData.value.print_areas[key].name;
+  }
+  // Capitalize
+  return key.charAt(0).toUpperCase() + key.slice(1);
+}
 
 const availableGraphSources = computed(() => {
   if (!activityData.value || !activityData.value.streams) return [];
@@ -827,7 +924,7 @@ function handleZoomOut() {
 <style scoped>
 .design-editor-page {
   display: flex;
-  height: calc(100vh - 60px); /* Adjust for navbar */
+  height: calc(100vh - 105px); /* Adjusted for navbar (~105px) */
   width: 100vw;
   overflow: hidden;
   background-color: #f5f5f5;
@@ -852,30 +949,8 @@ function handleZoomOut() {
 .editor-center-area {
   flex-grow: 1;
   display: flex;
-  flex-direction: column;
+  flex-direction: row; /* Horizontal layout: Switcher | Canvas */
   position: relative;
-}
-
-.view-switcher {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  padding: 10px;
-  background: #fff;
-  border-bottom: 1px solid #ddd;
-}
-
-.view-tab {
-  padding: 8px 16px;
-  border: 1px solid #ddd;
-  background: #f9f9f9;
-  cursor: pointer;
-  border-radius: 4px;
-}
-.view-tab.active {
-  background: #007bff;
-  color: white;
-  border-color: #0056b3;
 }
 
 .canvas-wrapper {
@@ -883,6 +958,6 @@ function handleZoomOut() {
   width: 100%;
   height: 100%;
   position: relative;
-  background: #e0e0e0; /* Canvas background distinct from page */
+  background: #e0e0e0;
 }
 </style>

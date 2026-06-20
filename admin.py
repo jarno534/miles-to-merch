@@ -61,12 +61,13 @@ class UserAdminView(SecuredModelView):
         if count == 0: return "0 Orders"
         url = url_for('order.index_view', flt1_user_id_equals=model.id)
         return Markup(f'<a href="{url}">{count} Orders</a>')
-    column_list = ('email', 'name', 'strava_name', 'is_admin', 'strava_id', 'shipping_city', 'shipping_country', 'designs', 'orders')
+    column_list = ('email', 'name', 'strava_name', 'is_admin', 'strava_id', 'shipping_address', 'shipping_city', 'shipping_country', 'designs', 'orders')
     column_formatters = {'designs': _designs_link, 'orders': _orders_link}
     column_searchable_list = ['email', 'name', 'strava_name', 'shipping_city', 'shipping_country']
     column_filters = ['is_admin', 'shipping_country']
     form_columns = ('email', 'name', 'is_admin', 'strava_id', 'shipping_address', 'shipping_city', 'shipping_zip', 'shipping_country')
     column_details_list = ('id', 'email', 'name', 'is_admin', 'strava_id', 'shipping_address', 'shipping_city', 'shipping_zip', 'shipping_country', 'designs', 'orders')
+    can_view_details = True
 
 class ProductAdminView(SecuredModelView):
     form = ProductForm
@@ -83,7 +84,7 @@ class ProductAdminView(SecuredModelView):
             return Markup(f'<img src="{model.product_image_url}" width="100">')
         return ""
 
-    column_list = ('name', 'printful_product_id', 'product_image_url', 'variants', 'print_areas')
+    column_list = ('name', 'printful_product_id', 'product_image_url', 'variants', 'print_areas', 'sponsored_settings')
     column_formatters = {
         'variants': _variants_link,
         'print_areas': _print_areas_link,
@@ -91,7 +92,7 @@ class ProductAdminView(SecuredModelView):
     }
     column_labels = {'product_image_url': 'Hero Image'}
     column_searchable_list = ['name', 'printful_product_id']
-    form_columns = ('name', 'description', 'printful_product_id', 'product_image_url')
+    form_columns = ('name', 'description', 'printful_product_id', 'product_image_url', 'sponsored_settings')
     column_editable_list = ['name']
 
 class VariantAdminView(SecuredModelView):
@@ -100,9 +101,9 @@ class VariantAdminView(SecuredModelView):
         if model.image:
             return Markup(f'<img src="{model.image}" width="50">')
         return ""
-    column_list = ('id', 'product.name', 'image', 'color', 'color_code', 'size', 'price', 'is_active', 'merch_color_type', 'image_base_path', 'image_urls')
+    column_list = ('id', 'product.name', 'image', 'color', 'size', 'price', 'print_areas', 'is_active', 'merch_color_type')
     column_formatters = {'image': _image_formatter}
-    form_columns = ('product', 'color', 'color_code', 'size', 'price', 'is_active', 'merch_color_type', 'id')
+    form_columns = ('product', 'color', 'color_code', 'size', 'price', 'is_active', 'merch_color_type', 'print_areas', 'image_urls', 'image_base_path')
     column_editable_list = ['is_active', 'price', 'merch_color_type']
     column_filters = ['is_active', 'color', 'size', 'product.name', 'merch_color_type']
     column_searchable_list = ['id', 'color', 'size', 'product.name']
