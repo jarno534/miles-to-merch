@@ -12,6 +12,32 @@ from extensions import db, cors
 load_dotenv()
 migrate = Migrate()
 
+def ensure_phase3_columns(app):
+    """Adds Phase 3 columns to the DB if they don't exist yet.
+    This is a safe, idempotent migration that runs on every startup."""
+    from sqlalchemy import text, inspect as sa_inspect
+    with app.app_context():
+        try:
+            engine = db.engine
+            inspector = sa_inspect(engine)
+
+            variant_cols = [c['name'] for c in inspector.get_columns('variant')]
+            if 'print_areas' not in variant_cols:
+                with engine.connect() as conn:
+                    conn.execute(text("ALTER TABLE variant ADD COLUMN print_areas JSON"))
+                    conn.commit()
+                print("DB migration: Added print_areas to variant.")
+
+            product_cols = [c['name'] for c in inspector.get_columns('product')]
+            if 'sponsored_settings' not in product_cols:
+                with engine.connect() as conn:
+                    conn.execute(text("ALTER TABLE product ADD COLUMN sponsored_settings JSON"))
+                    conn.commit()
+                print("DB migration: Added sponsored_settings to product.")
+
+        except Exception as e:
+            print(f"WARNING: ensure_phase3_columns failed (may be OK): {e}")
+
 def create_app(config_class=Config):
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_object(config_class)
@@ -21,6 +47,7 @@ def create_app(config_class=Config):
     setup_admin(app)
     app.register_blueprint(auth_bp)
     app.register_blueprint(api_bp)
+    ensure_phase3_columns(app)
     @app.route('/')
     def index():
         return jsonify({'message': 'Welcome!'})
