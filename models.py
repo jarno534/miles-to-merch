@@ -68,7 +68,7 @@ class Product(db.Model):
             'product_image_url': self.product_image_url,
             'variants': [v.to_dict(product_name=self.name) for v in variants_list],
             'print_areas': {p.placement: p.to_dict() for p in self.print_areas},
-            'sponsored_settings': self.sponsored_settings
+            'sponsored_settings': getattr(self, 'sponsored_settings', {}) or {}
         }
 
     def __str__(self):
@@ -113,10 +113,8 @@ class Variant(db.Model):
             'merch_color_type': self.merch_color_type,
             'image': self.image,
             'image_urls': self.image_urls,
-            'image': self.image,
-            'image_urls': self.image_urls,
             'image_base_path': self.image_base_path,
-            'print_areas': self.print_areas or {}
+            'print_areas': getattr(self, 'print_areas', {}) or {}
         }
 
 class PrintArea(db.Model):
