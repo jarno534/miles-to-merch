@@ -75,6 +75,32 @@ def create_app(config_class=Config):
         except Exception as e:
             return jsonify({'error': str(e), 'traceback': traceback.format_exc()}), 500
 
+    @app.route('/db-status')
+    def db_status():
+        from sqlalchemy import inspect as sa_inspect, text
+        try:
+            engine = db.engine
+            inspector = sa_inspect(engine)
+            variant_cols = [c['name'] for c in inspector.get_columns('variant')]
+            product_cols = [c['name'] for c in inspector.get_columns('product')]
+            
+            # Also try a raw query to confirm
+            with engine.connect() as conn:
+                count = conn.execute(text("SELECT COUNT(*) FROM product")).scalar()
+                vcount = conn.execute(text("SELECT COUNT(*) FROM variant")).scalar()
+            
+            return jsonify({
+                'product_count': count,
+                'variant_count': vcount,
+                'variant_has_print_areas': 'print_areas' in variant_cols,
+                'product_has_sponsored_settings': 'sponsored_settings' in product_cols,
+                'variant_cols': variant_cols,
+                'product_cols': product_cols,
+            })
+        except Exception as e:
+            import traceback
+            return jsonify({'error': str(e), 'traceback': traceback.format_exc()}), 500
+
     return app
 
 app = create_app()
