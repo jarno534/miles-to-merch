@@ -196,8 +196,11 @@ export default {
 
     selectColor(colorName) {
       this.selectedColor = colorName;
+      // Keep current size if available for this color, otherwise pick a default
       if (!this.availableSizes.includes(this.selectedSize)) {
-        this.selectedSize = null;
+        const preferred = ['M', 'L', 'S', 'XL'];
+        const pick = preferred.find(s => this.availableSizes.includes(s));
+        this.selectedSize = pick || this.availableSizes[0] || null;
       }
     },
 
