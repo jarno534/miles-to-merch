@@ -368,7 +368,38 @@ def import_product():
 @api_bp.route('/products/<int:product_id>', methods=['GET'])
 def get_single_product(product_id):
     product = Product.query.get_or_404(product_id)
-    return jsonify(product.to_dict())
+    # Return compact variant data (no print_areas) for fast product detail page loading.
+    # The design editor fetches print_areas separately when needed.
+    variants_list = product.variants.filter_by(is_active=True).all()
+    compact_variants = [{
+        'id': v.id,
+        'printful_variant_id': v.printful_variant_id,
+        'product_name': product.name,
+        'color': v.color,
+        'color_code': v.color_code,
+        'size': v.size,
+        'price': v.price,
+        'printful_price': v.printful_price,
+        'in_stock': v.in_stock,
+        'merch_color_type': v.merch_color_type,
+        'image': v.image,
+        'image_urls': v.image_urls,
+        'image_base_path': v.image_base_path,
+        'available_regions': v.available_regions,
+        # print_areas omitted intentionally — fetched separately by the design editor
+    } for v in variants_list]
+    return jsonify({
+        'id': product.id,
+        'name': product.name,
+        'description': product.description,
+        'printful_product_id': product.printful_product_id,
+        'printful_name': product.printful_name,
+        'product_image_url': product.product_image_url,
+        'sponsored_settings': getattr(product, 'sponsored_settings', {}) or {},
+        'print_areas': {p.placement: p.to_dict() for p in product.print_areas},
+        'variants': compact_variants,
+    })
+
 
 @api_bp.route('/products/<int:product_id>', methods=['DELETE'])
 @login_required
