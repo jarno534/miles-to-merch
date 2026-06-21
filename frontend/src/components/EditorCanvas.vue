@@ -1056,6 +1056,7 @@ export default {
             [width - 1, height - 1],
           ]; // Start from corners
 
+          // eslint-disable-next-line no-unused-vars
           const getPixelIndex = (x, y) => (y * width + x) * 4;
           const isWhite = (i) => {
             return data[i] > 240 && data[i + 1] > 240 && data[i + 2] > 240;
