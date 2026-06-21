@@ -47,7 +47,14 @@ def create_app(config_class=Config):
     setup_admin(app)
     app.register_blueprint(auth_bp)
     app.register_blueprint(api_bp)
+    with app.app_context():
+        try:
+            db.create_all()
+            print("DB: Tables ensured (create_all OK).")
+        except Exception as e:
+            print(f"WARNING: db.create_all() failed: {e}")
     ensure_phase3_columns(app)
+
     @app.route('/')
     def index():
         return jsonify({'message': 'Welcome!'})
