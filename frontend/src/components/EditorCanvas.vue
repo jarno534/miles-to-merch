@@ -453,25 +453,6 @@ export default {
   },
 
   computed: {
-    tintOverlayStyle() {
-      if (!this.selectedVariant?.color_code || !this.maskUrl) return {};
-
-      const maskStyle = `url(${this.maskUrl})`;
-
-      return {
-        backgroundColor: this.selectedVariant.color_code,
-        mixBlendMode: "multiply",
-        maskImage: maskStyle,
-        WebkitMaskImage: maskStyle,
-        maskSize: "contain",
-        WebkitMaskSize: "contain",
-        maskPosition: "center",
-        WebkitMaskPosition: "center",
-        maskRepeat: "no-repeat",
-        WebkitMaskRepeat: "no-repeat",
-      };
-    },
-
     mapElement() {
       return this.design.mapElement;
     },
