@@ -39,9 +39,11 @@
         ref="backgroundImage"
         @load="onImageLoad"
       />
-      <!-- Tint Overlay -->
+      <!-- Tint Overlay for Ghost Templates -->
       <div
-        v-if="backgroundImageUrl && selectedVariant?.color_code"
+        v-if="
+          isGhostTemplate && backgroundImageUrl && selectedVariant?.color_code
+        "
         class="tint-overlay"
         :style="tintOverlayStyle"
       ></div>
@@ -551,8 +553,45 @@ export default {
       return this.design.weatherElement;
     },
 
+    isGhostTemplate() {
+      const pUrl = this.printAreaData?.image_url;
+      return pUrl && pUrl.includes("/ghost/");
+    },
+
     backgroundImageUrl() {
-      return this.printAreaData?.image_url || null;
+      const pUrl = this.printAreaData?.image_url;
+      // If it's a model photo (not a ghost template), use the variant's actual image so it's the correct color.
+      if (pUrl && !pUrl.includes("/ghost/")) {
+        return this.selectedVariant?.image || pUrl;
+      }
+      return pUrl || null;
+    },
+
+    tintOverlayStyle() {
+      if (
+        !this.isGhostTemplate ||
+        !this.selectedVariant?.color_code ||
+        !this.maskUrl
+      )
+        return {};
+      return {
+        backgroundColor: this.selectedVariant.color_code,
+        mixBlendMode: "multiply",
+        maskImage: `url(${this.maskUrl})`,
+        maskSize: "contain",
+        maskRepeat: "no-repeat",
+        maskPosition: "center",
+        WebkitMaskImage: `url(${this.maskUrl})`,
+        WebkitMaskSize: "contain",
+        WebkitMaskRepeat: "no-repeat",
+        WebkitMaskPosition: "center",
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        pointerEvents: "none",
+      };
     },
 
     designAreaStyle() {
@@ -560,11 +599,15 @@ export default {
       const { width, height, top, left, mockup_width, mockup_height } =
         this.printAreaData;
 
+      // Fallbacks if not provided
+      const mWidth = mockup_width || 3000;
+      const mHeight = mockup_height || 3000;
+
       return {
-        width: `${(width / mockup_width) * 100}%`,
-        height: `${(height / mockup_height) * 100}%`,
-        top: `${(top / mockup_height) * 100}%`,
-        left: `${(left / mockup_width) * 100}%`,
+        width: `${(width / mWidth) * 100}%`,
+        height: `${(height / mHeight) * 100}%`,
+        top: `${(top / mHeight) * 100}%`,
+        left: `${(left / mWidth) * 100}%`,
         position: "absolute",
       };
     },
@@ -1025,7 +1068,7 @@ export default {
     },
 
     generateMask() {
-      if (!this.backgroundImageUrl) {
+      if (!this.isGhostTemplate || !this.backgroundImageUrl) {
         this.maskUrl = null;
         return;
       }
