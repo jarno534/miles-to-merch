@@ -54,6 +54,9 @@ class Product(db.Model):
     
     # Phase 3: Sponsored Settings
     sponsored_settings = db.Column(db.JSON, default={}) # Stores { 'sleeve_left': {'enabled': True, 'discount': 5.0} }
+    
+    # Admin Manual Configurations
+    manual_print_areas = db.Column(db.JSON, default={}) # Stores { 'front': { left, top, width, height, mockup_width, mockup_height, image_url, is_ghost }, ... }
 
     def to_dict(self, include_inactive=False):
         if include_inactive:
@@ -68,6 +71,7 @@ class Product(db.Model):
             'product_image_url': self.product_image_url,
             'variants': [v.to_dict(product_name=self.name) for v in variants_list],
             'print_areas': {p.placement: p.to_dict() for p in self.print_areas},
+            'manual_print_areas': getattr(self, 'manual_print_areas', {}) or {},
             'sponsored_settings': getattr(self, 'sponsored_settings', {}) or {}
         }
 

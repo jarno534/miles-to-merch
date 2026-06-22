@@ -989,3 +989,69 @@ def get_order_by_session_id(session_id):
 
     return jsonify(order_data)
 
+
+
+@api_bp.route('/admin/products/<int:product_id>/manual_print_areas', methods=['POST'])
+@login_required
+def update_manual_print_areas(product_id):
+    user = User.query.get(session['user_id'])
+    if not user.is_admin:
+        return jsonify({'error': 'Forbidden'}), 403
+        
+    data = request.json
+    if not data or 'manual_print_areas' not in data:
+        return jsonify({'error': 'Missing manual_print_areas data'}), 400
+        
+    product = Product.query.get(product_id)
+    if not product:
+        return jsonify({'error': 'Product not found'}), 404
+        
+    try:
+        product.manual_print_areas = data['manual_print_areas']
+        db.session.commit()
+        return jsonify({'message': 'Manual print areas updated successfully', 'manual_print_areas': product.manual_print_areas})
+    except Exception as e:
+        print(f'ERROR in update_manual_print_areas: {e}')
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+
+@api_bp.route('/admin/users')
+@login_required
+def admin_users():
+    user = User.query.get(session['user_id'])
+    if not user.is_admin:
+        return jsonify({'error': 'Forbidden'}), 403
+    users = User.query.all()
+    
+    # Custom serialization for admin users list
+    user_list = []
+    for u in users:
+        d = u.to_dict()
+        d['strava_id'] = u.strava_id
+        d['created_designs'] = len(u.designs)
+        d['orders_count'] = len(u.orders)
+        user_list.append(d)
+        
+    return jsonify(user_list)
+
+@api_bp.route('/admin/orders')
+@login_required
+def admin_orders():
+    user = User.query.get(session['user_id'])
+    if not user.is_admin:
+        return jsonify({'error': 'Forbidden'}), 403
+    orders = Order.query.order_by(Order.order_date.desc()).all()
+    
+    # Custom serialization
+    order_list = []
+    for o in orders:
+        d = o.to_dict()
+        d['user_email'] = o.user.email if o.user else 'Unknown'
+        d['shipping_name'] = o.shipping_name
+        d['printful_order_id'] = o.printful_order_id
+        order_list.append(d)
+        
+    return jsonify(order_list)
+

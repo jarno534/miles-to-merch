@@ -155,6 +155,13 @@ def strava_callback():
         )
         db.session.add(user)
 
+    # Proactively check if this strava_id is linked to a DIFFERENT user
+    existing_strava_user = User.query.filter_by(strava_id=strava_id).first()
+    if existing_strava_user and existing_strava_user.id != user.id:
+        print(f"Strava ID {strava_id} is already linked to user {existing_strava_user.email}")
+        frontend_url = current_app.config.get('FRONTEND_URL')
+        return redirect(f"{frontend_url}/profile?error=strava_already_linked")
+
     user.strava_id = strava_id
     user.strava_name = f"{athlete_info.get('firstname', '')} {athlete_info.get('lastname', '')}".strip()
     user.access_token = token_data.get('access_token')
@@ -165,7 +172,13 @@ def strava_callback():
     if user.email == "jarno.blomme@telenet.be" and not user.is_admin:
         user.is_admin = True
 
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        print(f"Database error in strava_callback: {e}")
+        frontend_url = current_app.config.get('FRONTEND_URL')
+        return redirect(f"{frontend_url}/profile?error=internal_db_error")
 
     session['user_id'] = user.id
     print(f"Session set for user ID: {user.id}. Admin status: {user.is_admin}")
