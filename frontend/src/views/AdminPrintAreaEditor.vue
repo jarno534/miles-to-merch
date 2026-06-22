@@ -2,7 +2,9 @@
   <div class="admin-canvas-editor">
     <div class="header">
       <h2>Edit Print Area Canvas</h2>
-      <button class="btn btn-secondary" @click="goBack">Back to Products</button>
+      <button class="btn btn-secondary" @click="goBack">
+        Back to Products
+      </button>
     </div>
 
     <div v-if="loading" class="loading">Loading product data...</div>
@@ -15,8 +17,16 @@
 
         <div class="form-group">
           <label>Select Placement:</label>
-          <select v-model="selectedPlacement" @change="onPlacementChange" class="form-control">
-            <option v-for="(area, key) in availablePlacements" :key="key" :value="key">
+          <select
+            v-model="selectedPlacement"
+            @change="onPlacementChange"
+            class="form-control"
+          >
+            <option
+              v-for="(area, key) in availablePlacements"
+              :key="key"
+              :value="key"
+            >
               {{ key }}
             </option>
           </select>
@@ -25,7 +35,12 @@
         <div v-if="currentConfig" class="config-form">
           <div class="form-group">
             <label>Background Image URL:</label>
-            <input type="text" v-model="currentConfig.image_url" class="form-control" @input="updateBgImage" />
+            <input
+              type="text"
+              v-model="currentConfig.image_url"
+              class="form-control"
+              @input="updateBgImage"
+            />
             <small>If empty, uses Variant 0 image.</small>
           </div>
 
@@ -46,10 +61,14 @@
           <p>Width: {{ Math.round(currentConfig.width) }}</p>
           <p>Height: {{ Math.round(currentConfig.height) }}</p>
 
-          <button class="btn btn-primary mt-4" @click="saveConfiguration" :disabled="saving">
-            {{ saving ? 'Saving...' : 'Save All Configurations' }}
+          <button
+            class="btn btn-primary mt-4"
+            @click="saveConfiguration"
+            :disabled="saving"
+          >
+            {{ saving ? "Saving..." : "Save All Configurations" }}
           </button>
-          
+
           <button class="btn btn-danger mt-2" @click="resetToPrintful">
             Reset this placement to Printful Defaults
           </button>
@@ -59,23 +78,35 @@
       <!-- Right Side: Canvas Preview -->
       <div class="canvas-panel">
         <div class="canvas-wrapper" ref="canvasWrapper">
-          <img 
+          <img
             ref="bgImage"
-            :src="previewImageUrl" 
+            :src="previewImageUrl"
             @load="onImageLoad"
-            class="background-preview" 
+            class="background-preview"
             crossorigin="anonymous"
           />
-          <div 
+          <div
             v-if="currentConfig && dimensionsLoaded"
             class="draggable-box"
             :style="boxStyle"
             @mousedown.prevent="startDrag"
           >
-            <div class="resize-handle top-left" @mousedown.stop.prevent="startResize($event, 'top-left')"></div>
-            <div class="resize-handle top-right" @mousedown.stop.prevent="startResize($event, 'top-right')"></div>
-            <div class="resize-handle bottom-left" @mousedown.stop.prevent="startResize($event, 'bottom-left')"></div>
-            <div class="resize-handle bottom-right" @mousedown.stop.prevent="startResize($event, 'bottom-right')"></div>
+            <div
+              class="resize-handle top-left"
+              @mousedown.stop.prevent="startResize($event, 'top-left')"
+            ></div>
+            <div
+              class="resize-handle top-right"
+              @mousedown.stop.prevent="startResize($event, 'top-right')"
+            ></div>
+            <div
+              class="resize-handle bottom-left"
+              @mousedown.stop.prevent="startResize($event, 'bottom-left')"
+            ></div>
+            <div
+              class="resize-handle bottom-right"
+              @mousedown.stop.prevent="startResize($event, 'bottom-right')"
+            ></div>
             <span class="box-label">Print Area</span>
           </div>
         </div>
@@ -85,29 +116,29 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, nextTick } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import api from '../api';
+import { ref, computed, onMounted } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import api from "../api";
 
 export default {
-  name: 'AdminPrintAreaEditor',
+  name: "AdminPrintAreaEditor",
   setup() {
     const route = useRoute();
     const router = useRouter();
-    
+
     const loading = ref(true);
     const saving = ref(false);
     const error = ref(null);
     const product = ref(null);
-    
+
     const manualConfig = ref({});
     const availablePlacements = ref({});
     const selectedPlacement = ref(null);
-    
+
     const bgImage = ref(null);
     const canvasWrapper = ref(null);
     const dimensionsLoaded = ref(false);
-    
+
     // Drag state
     const isDragging = ref(false);
     const isResizing = ref(false);
@@ -118,27 +149,28 @@ export default {
 
     const fetchProduct = async () => {
       try {
-        const response = await api.get('/admin/products');
+        const response = await api.get("/admin/products");
         const productId = parseInt(route.params.id);
-        const p = response.data.find(prod => prod.id === productId);
-        
-        if (!p) throw new Error('Product not found');
-        
+        const p = response.data.find((prod) => prod.id === productId);
+
+        if (!p) throw new Error("Product not found");
+
         product.value = p;
         availablePlacements.value = p.print_areas || {};
-        
+
         // Clone existing manual config or start empty
-        manualConfig.value = JSON.parse(JSON.stringify(p.manual_print_areas || {}));
-        
+        manualConfig.value = JSON.parse(
+          JSON.stringify(p.manual_print_areas || {})
+        );
+
         // Auto-select first placement
         const placements = Object.keys(availablePlacements.value);
         if (placements.length > 0) {
           selectedPlacement.value = placements[0];
           onPlacementChange();
         }
-        
       } catch (err) {
-        error.value = err.message || 'Failed to load product';
+        error.value = err.message || "Failed to load product";
       } finally {
         loading.value = false;
       }
@@ -162,7 +194,7 @@ export default {
       dimensionsLoaded.value = false;
       const placement = selectedPlacement.value;
       if (!placement) return;
-      
+
       // If we don't have a config for this placement yet, initialize it with Printful defaults
       if (!manualConfig.value[placement]) {
         const printfulData = availablePlacements.value[placement] || {};
@@ -173,8 +205,8 @@ export default {
           height: printfulData.height || 500,
           mockup_width: printfulData.mockup_width || 1000,
           mockup_height: printfulData.mockup_height || 1000,
-          image_url: printfulData.image_url || '',
-          is_ghost: false // default false for manual overrides usually
+          image_url: printfulData.image_url || "",
+          is_ghost: false, // default false for manual overrides usually
         };
       }
     };
@@ -210,7 +242,7 @@ export default {
         left: `${(currentConfig.value.left / mw) * 100}%`,
         top: `${(currentConfig.value.top / mh) * 100}%`,
         width: `${(currentConfig.value.width / mw) * 100}%`,
-        height: `${(currentConfig.value.height / mh) * 100}%`
+        height: `${(currentConfig.value.height / mh) * 100}%`,
       };
     });
 
@@ -220,17 +252,17 @@ export default {
       const rect = bgImage.value.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
-      
+
       const mw = currentConfig.value.mockup_width;
       const mh = currentConfig.value.mockup_height;
-      
+
       // Ratio of actual display size to intrinsic size
       const scaleX = mw / rect.width;
       const scaleY = mh / rect.height;
-      
+
       return {
         x: x * scaleX,
-        y: y * scaleY
+        y: y * scaleY,
       };
     };
 
@@ -240,14 +272,14 @@ export default {
       const coords = getIntrinsicCoords(e);
       startX.value = coords.x;
       startY.value = coords.y;
-      
+
       startBox.value = {
         left: currentConfig.value.left,
-        top: currentConfig.value.top
+        top: currentConfig.value.top,
       };
-      
-      document.addEventListener('mousemove', onDrag);
-      document.addEventListener('mouseup', stopInteraction);
+
+      document.addEventListener("mousemove", onDrag);
+      document.addEventListener("mouseup", stopInteraction);
     };
 
     const onDrag = (e) => {
@@ -255,7 +287,7 @@ export default {
       const coords = getIntrinsicCoords(e);
       const dx = coords.x - startX.value;
       const dy = coords.y - startY.value;
-      
+
       currentConfig.value.left = startBox.value.left + dx;
       currentConfig.value.top = startBox.value.top + dy;
     };
@@ -266,16 +298,16 @@ export default {
       const coords = getIntrinsicCoords(e);
       startX.value = coords.x;
       startY.value = coords.y;
-      
+
       startBox.value = {
         left: currentConfig.value.left,
         top: currentConfig.value.top,
         width: currentConfig.value.width,
-        height: currentConfig.value.height
+        height: currentConfig.value.height,
       };
-      
-      document.addEventListener('mousemove', onResize);
-      document.addEventListener('mouseup', stopInteraction);
+
+      document.addEventListener("mousemove", onResize);
+      document.addEventListener("mouseup", stopInteraction);
     };
 
     const onResize = (e) => {
@@ -283,20 +315,20 @@ export default {
       const coords = getIntrinsicCoords(e);
       const dx = coords.x - startX.value;
       const dy = coords.y - startY.value;
-      
-      if (resizeHandle.value.includes('right')) {
+
+      if (resizeHandle.value.includes("right")) {
         currentConfig.value.width = Math.max(10, startBox.value.width + dx);
       }
-      if (resizeHandle.value.includes('bottom')) {
+      if (resizeHandle.value.includes("bottom")) {
         currentConfig.value.height = Math.max(10, startBox.value.height + dy);
       }
-      if (resizeHandle.value.includes('left')) {
+      if (resizeHandle.value.includes("left")) {
         const newWidth = Math.max(10, startBox.value.width - dx);
         const shiftX = startBox.value.width - newWidth;
         currentConfig.value.left = startBox.value.left + shiftX;
         currentConfig.value.width = newWidth;
       }
-      if (resizeHandle.value.includes('top')) {
+      if (resizeHandle.value.includes("top")) {
         const newHeight = Math.max(10, startBox.value.height - dy);
         const shiftY = startBox.value.height - newHeight;
         currentConfig.value.top = startBox.value.top + shiftY;
@@ -308,40 +340,57 @@ export default {
       isDragging.value = false;
       isResizing.value = false;
       resizeHandle.value = null;
-      document.removeEventListener('mousemove', onDrag);
-      document.removeEventListener('mousemove', onResize);
-      document.removeEventListener('mouseup', stopInteraction);
+      document.removeEventListener("mousemove", onDrag);
+      document.removeEventListener("mousemove", onResize);
+      document.removeEventListener("mouseup", stopInteraction);
     };
 
     const saveConfiguration = async () => {
       saving.value = true;
       try {
-        await api.post(`/admin/products/${product.value.id}/manual_print_areas`, {
-          manual_print_areas: manualConfig.value
-        });
-        alert('Saved successfully!');
+        await api.post(
+          `/admin/products/${product.value.id}/manual_print_areas`,
+          {
+            manual_print_areas: manualConfig.value,
+          }
+        );
+        alert("Saved successfully!");
       } catch (err) {
-        alert('Failed to save: ' + (err.response?.data?.error || err.message));
+        alert("Failed to save: " + (err.response?.data?.error || err.message));
       } finally {
         saving.value = false;
       }
     };
 
-    const goBack = () => router.push('/admin');
+    const goBack = () => router.push("/admin");
 
     onMounted(() => {
       fetchProduct();
     });
 
     return {
-      loading, saving, error, product,
-      availablePlacements, selectedPlacement,
-      currentConfig, previewImageUrl,
-      onPlacementChange, resetToPrintful, updateBgImage,
-      bgImage, canvasWrapper, dimensionsLoaded, onImageLoad,
-      boxStyle, startDrag, startResize, saveConfiguration, goBack
+      loading,
+      saving,
+      error,
+      product,
+      availablePlacements,
+      selectedPlacement,
+      currentConfig,
+      previewImageUrl,
+      onPlacementChange,
+      resetToPrintful,
+      updateBgImage,
+      bgImage,
+      canvasWrapper,
+      dimensionsLoaded,
+      onImageLoad,
+      boxStyle,
+      startDrag,
+      startResize,
+      saveConfiguration,
+      goBack,
     };
-  }
+  },
 };
 </script>
 
@@ -423,10 +472,26 @@ export default {
   border-radius: 50%;
 }
 
-.top-left { top: -6px; left: -6px; cursor: nwse-resize; }
-.top-right { top: -6px; right: -6px; cursor: nesw-resize; }
-.bottom-left { bottom: -6px; left: -6px; cursor: nesw-resize; }
-.bottom-right { bottom: -6px; right: -6px; cursor: nwse-resize; }
+.top-left {
+  top: -6px;
+  left: -6px;
+  cursor: nwse-resize;
+}
+.top-right {
+  top: -6px;
+  right: -6px;
+  cursor: nesw-resize;
+}
+.bottom-left {
+  bottom: -6px;
+  left: -6px;
+  cursor: nesw-resize;
+}
+.bottom-right {
+  bottom: -6px;
+  right: -6px;
+  cursor: nwse-resize;
+}
 
 .form-group {
   margin-bottom: 15px;
@@ -439,6 +504,10 @@ export default {
   border-radius: 4px;
 }
 
-.mt-4 { margin-top: 1.5rem; }
-.mt-2 { margin-top: 0.5rem; }
+.mt-4 {
+  margin-top: 1.5rem;
+}
+.mt-2 {
+  margin-top: 0.5rem;
+}
 </style>

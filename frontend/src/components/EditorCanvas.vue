@@ -536,7 +536,10 @@ export default {
 
     isGhostTemplate() {
       // If we have a manual configuration that explicitly defines this
-      if (this.printAreaData && typeof this.printAreaData.is_ghost !== 'undefined') {
+      if (
+        this.printAreaData &&
+        typeof this.printAreaData.is_ghost !== "undefined"
+      ) {
         return this.printAreaData.is_ghost;
       }
       // Fallback: check if the URL contains /ghost/

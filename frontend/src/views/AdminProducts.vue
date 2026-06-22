@@ -3,11 +3,30 @@
     <h1>Admin Dashboard</h1>
 
     <div class="tabs">
-      <button :class="{ active: activeTab === 'selected' }" @click="activeTab = 'selected'">Producten</button>
-      <button :class="{ active: activeTab === 'all' }" @click="activeTab = 'all'">Printful Catalogus</button>
-      <button :class="{ active: activeTab === 'users' }" @click="fetchUsers">Gebruikers</button>
-      <button :class="{ active: activeTab === 'orders' }" @click="fetchOrders">Bestellingen</button>
-      <button :class="{ active: activeTab === 'advanced' }" @click="activeTab = 'advanced'">Geavanceerd Systeem</button>
+      <button
+        :class="{ active: activeTab === 'selected' }"
+        @click="activeTab = 'selected'"
+      >
+        Producten
+      </button>
+      <button
+        :class="{ active: activeTab === 'all' }"
+        @click="activeTab = 'all'"
+      >
+        Printful Catalogus
+      </button>
+      <button :class="{ active: activeTab === 'users' }" @click="fetchUsers">
+        Gebruikers
+      </button>
+      <button :class="{ active: activeTab === 'orders' }" @click="fetchOrders">
+        Bestellingen
+      </button>
+      <button
+        :class="{ active: activeTab === 'advanced' }"
+        @click="activeTab = 'advanced'"
+      >
+        Geavanceerd Systeem
+      </button>
     </div>
 
     <!-- TAB 1: Selected Products (List View) -->
@@ -99,7 +118,12 @@
               <button class="btn-delete" @click="deleteProduct(product)">
                 🗑️
               </button>
-              <router-link :to="'/admin/product/' + product.id + '/canvas'" class="btn-info-small" style="margin-left: 5px; padding: 5px;">Edit Canvas</router-link>
+              <router-link
+                :to="'/admin/product/' + product.id + '/canvas'"
+                class="btn-info-small"
+                style="margin-left: 5px; padding: 5px"
+                >Edit Canvas</router-link
+              >
             </div>
           </div>
 
@@ -262,12 +286,15 @@
         <tbody>
           <tr v-for="u in usersList" :key="u.id">
             <td>{{ u.id }}</td>
-            <td>{{ u.name || u.strava_name || 'Onbekend' }}</td>
-            <td>{{ u.email || 'Geen' }}</td>
-            <td>{{ u.shipping_city || 'Onbekend' }}, {{ u.shipping_country || '' }}</td>
+            <td>{{ u.name || u.strava_name || "Onbekend" }}</td>
+            <td>{{ u.email || "Geen" }}</td>
+            <td>
+              {{ u.shipping_city || "Onbekend" }},
+              {{ u.shipping_country || "" }}
+            </td>
             <td>{{ u.created_designs }}</td>
             <td>{{ u.orders_count }}</td>
-            <td>{{ u.is_admin ? 'Ja' : 'Nee' }}</td>
+            <td>{{ u.is_admin ? "Ja" : "Nee" }}</td>
           </tr>
         </tbody>
       </table>
@@ -294,7 +321,7 @@
             <td>{{ new Date(o.order_date).toLocaleString() }}</td>
             <td>{{ o.shipping_name || o.user_email }}</td>
             <td>{{ o.order_status }}</td>
-            <td>{{ o.printful_order_id || 'Nog niet' }}</td>
+            <td>{{ o.printful_order_id || "Nog niet" }}</td>
             <td>€{{ o.total_price }}</td>
           </tr>
         </tbody>
@@ -305,13 +332,18 @@
     <div v-if="activeTab === 'advanced'" class="tab-content advanced-tab">
       <h2>Geavanceerd Systeem Beheer</h2>
       <p>
-        Het systeem heeft een complete backend administratie tool waar je <strong>álles</strong> kunt aanpassen: gebruikers, orders, varianten per maat, ruwe json instellingen, enzovoorts.
+        Het systeem heeft een complete backend administratie tool waar je
+        <strong>álles</strong> kunt aanpassen: gebruikers, orders, varianten per
+        maat, ruwe json instellingen, enzovoorts.
       </p>
-      <a :href="backendAdminUrl" target="_blank" class="btn btn-primary btn-large">
+      <a
+        :href="backendAdminUrl"
+        target="_blank"
+        class="btn btn-primary btn-large"
+      >
         Open het geavanceerde paneel (Nieuw tabblad)
       </a>
     </div>
-
   </div>
 </template>
 
@@ -331,7 +363,7 @@ export default {
       catalogLoading: false,
       searchQuery: "",
       importingId: null,
-      
+
       // Users & Orders
       usersList: [],
       usersLoading: false,
@@ -347,8 +379,9 @@ export default {
   },
   computed: {
     backendAdminUrl() {
-      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
-      return baseUrl + '/admin';
+      const baseUrl =
+        import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+      return baseUrl + "/admin";
     },
     filteredCatalog() {
       if (!this.searchQuery) return this.catalog;
@@ -523,7 +556,7 @@ export default {
       }
     },
     async fetchUsers() {
-      this.activeTab = 'users';
+      this.activeTab = "users";
       this.usersLoading = true;
       try {
         const response = await axios.get("/api/admin/users");
@@ -535,7 +568,7 @@ export default {
       }
     },
     async fetchOrders() {
-      this.activeTab = 'orders';
+      this.activeTab = "orders";
       this.ordersLoading = true;
       try {
         const response = await axios.get("/api/admin/orders");
@@ -545,7 +578,7 @@ export default {
       } finally {
         this.ordersLoading = false;
       }
-    }
+    },
   },
 };
 </script>
@@ -735,7 +768,8 @@ export default {
   border-collapse: collapse;
   margin-top: 15px;
 }
-.simple-table th, .simple-table td {
+.simple-table th,
+.simple-table td {
   border: 1px solid #ddd;
   padding: 8px;
   text-align: left;
