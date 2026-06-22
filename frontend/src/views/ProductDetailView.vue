@@ -100,7 +100,6 @@ export default {
     };
   },
 
-
   computed: {
     displayImageUrl() {
       // 1. Try to find a variant-specific match
@@ -195,7 +194,6 @@ export default {
     }
     this.loading = false;
   },
-
 
   methods: {
     getImageUrl(variant) {
