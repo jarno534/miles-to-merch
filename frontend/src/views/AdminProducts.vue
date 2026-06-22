@@ -18,6 +18,12 @@
       <button :class="{ active: activeTab === 'users' }" @click="fetchUsers">
         Gebruikers
       </button>
+      <button
+        :class="{ active: activeTab === 'designs' }"
+        @click="fetchDesigns"
+      >
+        Ontwerpen
+      </button>
       <button :class="{ active: activeTab === 'orders' }" @click="fetchOrders">
         Bestellingen
       </button>
@@ -184,7 +190,6 @@
       </div>
     </div>
 
-    <!-- TAB 2: All Products (Placeholder) -->
     <!-- TAB 2: All Products (Catalog) -->
     <div v-if="activeTab === 'all'" class="tab-content">
       <div class="catalog-header">
@@ -275,19 +280,21 @@
         <thead>
           <tr>
             <th>ID</th>
-            <th>Naam / Strava</th>
+            <th>Naam</th>
             <th>Email</th>
-            <th>Adres</th>
-            <th>Aantal Designs</th>
-            <th>Aantal Bestellingen</th>
+            <th>Strava</th>
+            <th>Locatie</th>
+            <th>Ontwerpen</th>
+            <th>Bestellingen</th>
             <th>Admin?</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="u in usersList" :key="u.id">
             <td>{{ u.id }}</td>
-            <td>{{ u.name || u.strava_name || "Onbekend" }}</td>
-            <td>{{ u.email || "Geen" }}</td>
+            <td>{{ u.name || "Onbekend" }}</td>
+            <td>{{ u.email || "-" }}</td>
+            <td>{{ u.strava_name || "-" }} ({{ u.strava_id || "-" }})</td>
             <td>
               {{ u.shipping_city || "Onbekend" }},
               {{ u.shipping_country || "" }}
@@ -295,6 +302,40 @@
             <td>{{ u.created_designs }}</td>
             <td>{{ u.orders_count }}</td>
             <td>{{ u.is_admin ? "Ja" : "Nee" }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- TAB: Designs -->
+    <div v-if="activeTab === 'designs'" class="tab-content">
+      <h2>Ontwerpen (Designs) van Gebruikers</h2>
+      <div v-if="designsLoading" class="loading">Laden...</div>
+      <table v-else class="simple-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Datum</th>
+            <th>Naam Ontwerp</th>
+            <th>Gebruiker</th>
+            <th>Product</th>
+            <th>Voorbeeld</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="d in designsList" :key="d.id">
+            <td>{{ d.id }}</td>
+            <td>{{ new Date(d.created_at).toLocaleString() }}</td>
+            <td>{{ d.name }}</td>
+            <td>{{ d.user_name }} ({{ d.user_email }})</td>
+            <td>{{ d.product_id }} / Variant {{ d.variant_id }}</td>
+            <td>
+              <img
+                v-if="d.preview_urls && d.preview_urls.front"
+                :src="d.preview_urls.front"
+                width="50"
+              />
+            </td>
           </tr>
         </tbody>
       </table>
@@ -336,6 +377,15 @@
         <strong>álles</strong> kunt aanpassen: gebruikers, orders, varianten per
         maat, ruwe json instellingen, enzovoorts.
       </p>
+      <div class="warning-box">
+        <strong>Let op:</strong> Als het scherm leeg is of je een "Welcome"
+        bericht ziet, komt dit doordat je browser cookies blokkeert tussen de
+        frontend en de backend. <br /><br />
+        Oplossing: Ga rechtstreeks naar de backend via onderstaande knop. Omdat
+        het een aparte omgeving is, moet je daar eenmalig opnieuw inloggen met
+        je admin e-mail via <strong>/auth/login</strong> voordat je naar
+        <strong>/admin</strong> kunt.
+      </div>
       <a
         :href="backendAdminUrl"
         target="_blank"
@@ -364,11 +414,13 @@ export default {
       searchQuery: "",
       importingId: null,
 
-      // Users & Orders
+      // Users, Designs & Orders
       usersList: [],
       usersLoading: false,
       ordersList: [],
       ordersLoading: false,
+      designsList: [],
+      designsLoading: false,
     };
   },
   async created() {
@@ -579,6 +631,18 @@ export default {
         this.ordersLoading = false;
       }
     },
+    async fetchDesigns() {
+      this.activeTab = "designs";
+      this.designsLoading = true;
+      try {
+        const response = await axios.get("/api/admin/designs");
+        this.designsList = response.data;
+      } catch (error) {
+        console.error("Fetch designs failed", error);
+      } finally {
+        this.designsLoading = false;
+      }
+    },
   },
 };
 </script>
@@ -780,6 +844,15 @@ export default {
 .advanced-tab {
   text-align: center;
   padding: 50px;
+}
+.warning-box {
+  background-color: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeeba;
+  padding: 15px;
+  border-radius: 5px;
+  margin-top: 20px;
+  text-align: left;
 }
 .btn-large {
   display: inline-block;

@@ -1055,3 +1055,22 @@ def admin_orders():
         
     return jsonify(order_list)
 
+
+
+@api_bp.route('/admin/designs')
+@login_required
+def admin_designs():
+    user = User.query.get(session['user_id'])
+    if not user.is_admin:
+        return jsonify({'error': 'Forbidden'}), 403
+    designs = Design.query.order_by(Design.created_at.desc()).all()
+    
+    design_list = []
+    for d in designs:
+        d_dict = d.to_dict()
+        d_dict['user_email'] = d.user.email if d.user else 'Onbekend'
+        d_dict['user_name'] = d.user.name or d.user.strava_name or 'Onbekend'
+        design_list.append(d_dict)
+        
+    return jsonify(design_list)
+
