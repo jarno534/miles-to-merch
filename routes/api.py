@@ -423,6 +423,96 @@ def delete_product(product_id):
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
+@api_bp.route('/variants/<int:variant_id>', methods=['GET'])
+def get_variant(variant_id):
+    """Haalt alle details van een specifieke variant op, inclusief print_areas."""
+    variant = Variant.query.get_or_404(variant_id)
+    # The to_dict() method of Variant includes print_areas
+    return jsonify(variant.to_dict(product_name=variant.product.name))
+
+@api_bp.route('/pricing/estimate', methods=['POST'])
+def estimate_pricing():
+    """Berekent dynamisch de kosten voor extra printvlakken via de Printful API."""
+    data = request.json
+    variant_id = data.get('printful_variant_id')
+    placements = data.get('placements', ['front']) # list of used placements
+
+    if not variant_id:
+        return jsonify({'error': 'Missing printful_variant_id'}), 400
+
+    printful_api_key = current_app.config.get('PRINTFUL_API_KEY')
+    if not printful_api_key:
+        return jsonify({'error': 'Printful API key not configured'}), 500
+
+    # Prepare files array for Printful (dummy URLs just to calculate placement cost)
+    files = []
+    for placement in placements:
+        files.append({
+            "type": placement, # Printful uses 'type' for placements like 'front', 'back', etc. in some contexts, or 'placement'. 
+            # We'll use dummy URLs. Printful needs a valid format like PNG.
+            "url": "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png"
+        })
+
+    payload = {
+        "recipient": {
+            "address1": "19749 Dearborn St",
+            "city": "Chatsworth",
+            "country_code": "US",
+            "state_code": "CA",
+            "zipcode": "91311"
+        },
+        "items": [
+            {
+                "variant_id": variant_id,
+                "quantity": 1,
+                "files": files
+            }
+        ]
+    }
+
+    headers = {
+        'Authorization': f'Bearer {printful_api_key}',
+        'Content-Type': 'application/json'
+    }
+    
+    # We don't have a store_id easily available here without fetching it, but orders/estimate-costs works without store_id if we don't calculate tax for a specific store.
+    # Wait, earlier test said "This endpoint requires `store_id`!". We must fetch the store ID.
+    try:
+        store_res = requests.get('https://api.printful.com/stores', headers=headers)
+        store_res.raise_for_status()
+        stores = store_res.json().get('result', [])
+        if not stores:
+            return jsonify({'error': 'No Printful store found'}), 500
+        store_id = stores[0]['id']
+
+        url = f'https://api.printful.com/orders/estimate-costs?store_id={store_id}'
+        
+        # Request 1: Base cost (front only, or first placement only)
+        base_payload = dict(payload)
+        base_payload["items"][0]["files"] = [files[0]] if files else []
+        res_base = requests.post(url, headers=headers, json=base_payload)
+        res_base.raise_for_status()
+        base_subtotal = float(res_base.json().get('result', {}).get('costs', {}).get('subtotal', 0))
+
+        # Request 2: Total cost with all placements
+        res_total = requests.post(url, headers=headers, json=payload)
+        res_total.raise_for_status()
+        total_subtotal = float(res_total.json().get('result', {}).get('costs', {}).get('subtotal', 0))
+        
+        extra_cost = max(0.0, total_subtotal - base_subtotal)
+        
+        return jsonify({
+            'base_wholesale': base_subtotal,
+            'total_wholesale': total_subtotal,
+            'extra_cost': extra_cost,
+            'currency': res_total.json().get('result', {}).get('costs', {}).get('currency', 'EUR')
+        })
+
+    except requests.exceptions.RequestException as e:
+        print(f"Pricing Estimate Error: {e}")
+        return jsonify({'error': str(e), 'fallback': True, 'extra_cost': (len(placements)-1)*5.95}), 500
+
+
 @api_bp.route('/products/<int:product_id>/printful-details')
 def get_printful_product_details(product_id):
     """Haalt alle varianten (kleuren, maten) op van een specifiek Printful product."""

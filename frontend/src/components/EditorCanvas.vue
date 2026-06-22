@@ -1704,6 +1704,13 @@ export default {
   transform-style: preserve-3d;
   overflow: hidden;
   z-index: 1;
+  border: 2px dashed rgba(252, 76, 2, 0.4);
+  border-radius: 8px;
+  pointer-events: auto; /* Ensure clicks register inside */
+  transition: border-color 0.2s ease-in-out;
+}
+.design-area-container:hover {
+  border-color: rgba(252, 76, 2, 0.8);
 }
 
 .design-area-container.is-active {

@@ -178,6 +178,9 @@ const activityPhotos = ref([]);
 const editorCanvasRef = ref(null);
 const mapInstance = ref(null);
 
+const dynamicPlacementCosts = ref({});
+const isEstimatingPricing = ref(false);
+
 // Composable Instances
 const { weatherData, fetchWeather, updateWeatherDisplay } = useWeather();
 const { analyzeAchievements: analyzeAchievementsLogic } = useAchievements();
@@ -217,6 +220,79 @@ function handleVariantChange(newId) {
   console.log("DEBUG: handleVariantChange called with:", newId);
   selectedVariantId.value = newId;
   localStorage.setItem("selectedVariantId", newId);
+  fetchVariantDetails(newId);
+}
+
+async function fetchVariantDetails(variantId) {
+  try {
+    const { data } = await axios.get(`/api/variants/${variantId}`);
+    if (editorProductData.value && editorProductData.value.variants) {
+      const idx = editorProductData.value.variants.findIndex(v => v.id === variantId);
+      if (idx !== -1) {
+        editorProductData.value.variants[idx] = data;
+      }
+    }
+    estimatePricing();
+  } catch (error) {
+    console.error("Failed to fetch variant details:", error);
+  }
+}
+
+async function estimatePricing() {
+  if (!selectedVariant.value || !selectedVariant.value.printful_variant_id) return;
+  
+  // Find which views have ANY content
+  const activeViews = Object.keys(designs).filter(view => {
+    const d = designs[view];
+    if (!d) return false;
+    return (d.mapElement?.visible) || 
+           (d.dataFields?.availableFields?.some(f => f.selected)) || 
+           (d.graphElements?.length > 0) || 
+           (d.textBoxes?.length > 0) ||
+           (d.photoElements?.length > 0);
+  });
+  
+  if (activeViews.length === 0) activeViews.push("front");
+
+  isEstimatingPricing.value = true;
+  try {
+    const res = await axios.post('/api/pricing/estimate', {
+      printful_variant_id: selectedVariant.value.printful_variant_id,
+      placements: activeViews
+    });
+    
+    // Distribute the extra cost across the EXTRA placements used
+    // Wait, the API returns the total extra_cost. We can just show it on the non-base placements.
+    // To be precise, if extra_cost is 5.95 and we have 1 extra placement, it's 5.95 per placement.
+    const extraPlacements = activeViews.filter(v => v !== 'front'); // Assuming front is base
+    let perPlacementCost = 0;
+    if (extraPlacements.length > 0 && res.data.extra_cost) {
+        perPlacementCost = res.data.extra_cost / extraPlacements.length;
+    }
+    
+    // Update costs
+    const newCosts = {};
+    availableViews.value.forEach(view => {
+       if (view !== 'front') {
+           newCosts[view] = perPlacementCost || res.data.extra_cost || 5.95; 
+           // If we didn't select it yet, we just show the potential cost (or fallback)
+       } else {
+           newCosts[view] = 0;
+       }
+    });
+    dynamicPlacementCosts.value = newCosts;
+    
+  } catch(error) {
+    console.error("Failed to estimate pricing", error);
+    // Fallback
+    const newCosts = {};
+    availableViews.value.forEach(view => {
+        if (view !== 'front') newCosts[view] = 5.95;
+    });
+    dynamicPlacementCosts.value = newCosts;
+  } finally {
+    isEstimatingPricing.value = false;
+  }
 }
 
 const currentPrintArea = computed(() => {
@@ -265,31 +341,27 @@ const availableViews = computed(() => {
   return sorted;
 });
 
+const activePlacementsList = computed(() => {
+  const activeViews = Object.keys(designs).filter(view => {
+    const d = designs[view];
+    if (!d) return false;
+    return (d.mapElement?.visible) || 
+           (d.dataFields?.availableFields?.some(f => f.selected)) || 
+           (d.graphElements?.length > 0) || 
+           (d.textBoxes?.length > 0) ||
+           (d.photoElements?.length > 0);
+  });
+  if (activeViews.length === 0) activeViews.push("front");
+  return activeViews.sort().join(',');
+});
+
 const sidebarPlacements = computed(() => {
   const placements = {};
-  const extraCost = 5.0; // Hardcoded for now, or fetch from settings
-
-  // Determine which views are "active" (have content)
-  // This helps if we want dynamic "first one is free" logic
-  // For now, let's assume 'front' is base, others are extra.
-  // Or: If you select a view, it adds to cost.
 
   availableViews.value.forEach((view) => {
     let price = 0;
-    // Simple logic: Front is base. Others +5.
-    // Refined logic based on user request "after first is edited":
-    // This implies flexible starting point.
-    // Let's stick to: Non-front views cost extra for now (simplest interpretation of Printful usually)
-    // UNLESS we check what's edited.
-
-    // User Quote: "how much an extra print surface costs after the first print surface is edited"
-    // This implies dynamic.
-    // Let activeViews = count of views with >0 elements.
-    // But we need to show the price on the BUTTON.
-    // "Front (Included)", "Back (+€5.00)"
-
     if (view !== "front") {
-      price = extraCost;
+      price = dynamicPlacementCosts.value[view] || 5.95; // Use dynamic cost or fallback
     }
 
     placements[view] = {
@@ -300,6 +372,7 @@ const sidebarPlacements = computed(() => {
   });
   return placements;
 });
+
 
 function getPlacementName(key) {
   // Helper to get name from product data or format key
@@ -449,6 +522,13 @@ onMounted(async () => {
 
     // Initialize history after loading state
     initHistory();
+    
+    // Fetch detailed variant info and calculate pricing
+    if (selectedVariantId.value) {
+      await fetchVariantDetails(selectedVariantId.value);
+    } else {
+      estimatePricing();
+    }
   } catch (error) {
     console.error("Error loading editor:", error);
     notifyError("Failed to load editor data.");
@@ -475,6 +555,11 @@ watch(
   },
   { deep: true }
 );
+
+watch(activePlacementsList, () => {
+    estimatePricing();
+});
+
 
 watch(
   () => settings.units,
