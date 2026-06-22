@@ -227,7 +227,9 @@ async function fetchVariantDetails(variantId) {
   try {
     const { data } = await axios.get(`/api/variants/${variantId}`);
     if (editorProductData.value && editorProductData.value.variants) {
-      const idx = editorProductData.value.variants.findIndex(v => v.id === variantId);
+      const idx = editorProductData.value.variants.findIndex(
+        (v) => v.id === variantId
+      );
       if (idx !== -1) {
         editorProductData.value.variants[idx] = data;
       }
@@ -239,55 +241,57 @@ async function fetchVariantDetails(variantId) {
 }
 
 async function estimatePricing() {
-  if (!selectedVariant.value || !selectedVariant.value.printful_variant_id) return;
-  
+  if (!selectedVariant.value || !selectedVariant.value.printful_variant_id)
+    return;
+
   // Find which views have ANY content
-  const activeViews = Object.keys(designs).filter(view => {
+  const activeViews = Object.keys(designs).filter((view) => {
     const d = designs[view];
     if (!d) return false;
-    return (d.mapElement?.visible) || 
-           (d.dataFields?.availableFields?.some(f => f.selected)) || 
-           (d.graphElements?.length > 0) || 
-           (d.textBoxes?.length > 0) ||
-           (d.photoElements?.length > 0);
+    return (
+      d.mapElement?.visible ||
+      d.dataFields?.availableFields?.some((f) => f.selected) ||
+      d.graphElements?.length > 0 ||
+      d.textBoxes?.length > 0 ||
+      d.photoElements?.length > 0
+    );
   });
-  
+
   if (activeViews.length === 0) activeViews.push("front");
 
   isEstimatingPricing.value = true;
   try {
-    const res = await axios.post('/api/pricing/estimate', {
+    const res = await axios.post("/api/pricing/estimate", {
       printful_variant_id: selectedVariant.value.printful_variant_id,
-      placements: activeViews
+      placements: activeViews,
     });
-    
+
     // Distribute the extra cost across the EXTRA placements used
     // Wait, the API returns the total extra_cost. We can just show it on the non-base placements.
     // To be precise, if extra_cost is 5.95 and we have 1 extra placement, it's 5.95 per placement.
-    const extraPlacements = activeViews.filter(v => v !== 'front'); // Assuming front is base
+    const extraPlacements = activeViews.filter((v) => v !== "front"); // Assuming front is base
     let perPlacementCost = 0;
     if (extraPlacements.length > 0 && res.data.extra_cost) {
-        perPlacementCost = res.data.extra_cost / extraPlacements.length;
+      perPlacementCost = res.data.extra_cost / extraPlacements.length;
     }
-    
+
     // Update costs
     const newCosts = {};
-    availableViews.value.forEach(view => {
-       if (view !== 'front') {
-           newCosts[view] = perPlacementCost || res.data.extra_cost || 5.95; 
-           // If we didn't select it yet, we just show the potential cost (or fallback)
-       } else {
-           newCosts[view] = 0;
-       }
+    availableViews.value.forEach((view) => {
+      if (view !== "front") {
+        newCosts[view] = perPlacementCost || res.data.extra_cost || 5.95;
+        // If we didn't select it yet, we just show the potential cost (or fallback)
+      } else {
+        newCosts[view] = 0;
+      }
     });
     dynamicPlacementCosts.value = newCosts;
-    
-  } catch(error) {
+  } catch (error) {
     console.error("Failed to estimate pricing", error);
     // Fallback
     const newCosts = {};
-    availableViews.value.forEach(view => {
-        if (view !== 'front') newCosts[view] = 5.95;
+    availableViews.value.forEach((view) => {
+      if (view !== "front") newCosts[view] = 5.95;
     });
     dynamicPlacementCosts.value = newCosts;
   } finally {
@@ -342,17 +346,19 @@ const availableViews = computed(() => {
 });
 
 const activePlacementsList = computed(() => {
-  const activeViews = Object.keys(designs).filter(view => {
+  const activeViews = Object.keys(designs).filter((view) => {
     const d = designs[view];
     if (!d) return false;
-    return (d.mapElement?.visible) || 
-           (d.dataFields?.availableFields?.some(f => f.selected)) || 
-           (d.graphElements?.length > 0) || 
-           (d.textBoxes?.length > 0) ||
-           (d.photoElements?.length > 0);
+    return (
+      d.mapElement?.visible ||
+      d.dataFields?.availableFields?.some((f) => f.selected) ||
+      d.graphElements?.length > 0 ||
+      d.textBoxes?.length > 0 ||
+      d.photoElements?.length > 0
+    );
   });
   if (activeViews.length === 0) activeViews.push("front");
-  return activeViews.sort().join(',');
+  return activeViews.sort().join(",");
 });
 
 const sidebarPlacements = computed(() => {
@@ -372,7 +378,6 @@ const sidebarPlacements = computed(() => {
   });
   return placements;
 });
-
 
 function getPlacementName(key) {
   // Helper to get name from product data or format key
@@ -522,7 +527,7 @@ onMounted(async () => {
 
     // Initialize history after loading state
     initHistory();
-    
+
     // Fetch detailed variant info and calculate pricing
     if (selectedVariantId.value) {
       await fetchVariantDetails(selectedVariantId.value);
@@ -557,9 +562,8 @@ watch(
 );
 
 watch(activePlacementsList, () => {
-    estimatePricing();
+  estimatePricing();
 });
-
 
 watch(
   () => settings.units,
