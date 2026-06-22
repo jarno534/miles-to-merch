@@ -1,6 +1,10 @@
 <template>
   <div class="product-detail-page">
     <SpinnerComponent v-if="loading" text="Loading product details..." />
+    <div v-else-if="loadError" class="error-container">
+      <p class="error-message">⚠️ {{ loadError }}</p>
+      <button class="retry-button" @click="$router.go(0)">🔄 Retry</button>
+    </div>
     <div v-else-if="product" class="product-container">
       <div class="product-image-container">
         <img
@@ -92,8 +96,10 @@ export default {
       loading: true,
       selectedColor: null,
       selectedSize: null,
+      loadError: null,
     };
   },
+
 
   computed: {
     displayImageUrl() {
@@ -168,15 +174,28 @@ export default {
   },
 
   async created() {
-    try {
-      const response = await axios.get(`/api/products/${this.productId}`);
-      this.product = response.data;
-    } catch (error) {
-      console.error("Error fetching product data:", error);
-    } finally {
-      this.loading = false;
+    const maxAttempts = 3;
+    const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const response = await axios.get(`/api/products/${this.productId}`);
+        this.product = response.data;
+        this.loadError = null;
+        break; // success
+      } catch (error) {
+        console.warn(`Product load attempt ${attempt} failed:`, error.message);
+        if (attempt < maxAttempts) {
+          await delay(2000);
+        } else {
+          this.loadError =
+            "Could not load product. The server may be waking up — please refresh the page.";
+          console.error("All attempts failed:", error);
+        }
+      }
     }
+    this.loading = false;
   },
+
 
   methods: {
     getImageUrl(variant) {
@@ -242,6 +261,33 @@ export default {
   padding: 40px;
   min-height: 100vh;
   background-color: #f0f2f5;
+}
+
+.error-container {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.error-message {
+  font-size: 1.1rem;
+  color: #666;
+  margin-bottom: 20px;
+}
+
+.retry-button {
+  background-color: #fc4c02;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.retry-button:hover {
+  background-color: #e24300;
 }
 
 .product-container {

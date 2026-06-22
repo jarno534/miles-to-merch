@@ -16,6 +16,14 @@ class Config:
         _db_url = _db_url.replace('postgres://', 'postgresql://', 1)
     SQLALCHEMY_DATABASE_URI = _db_url
 
+    # Connection pool settings for Render free tier (handles sleep/wake cycles)
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'pool_pre_ping': True,      # Test connections before use (detects stale connections)
+        'pool_recycle': 280,        # Recycle connections every ~4.5 min (Render cuts idle connections at 5 min)
+        'pool_timeout': 20,         # Wait max 20s for a connection from pool
+        'pool_size': 5,             # Keep 5 connections in pool
+        'max_overflow': 2,          # Allow 2 extra connections under load
+    }
 
     # Strava API-instellingen
     STRAVA_CLIENT_ID = os.environ.get('STRAVA_CLIENT_ID')
