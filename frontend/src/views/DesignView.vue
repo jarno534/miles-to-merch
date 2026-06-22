@@ -257,7 +257,11 @@ async function estimatePricing() {
     );
   });
 
-  if (activeViews.length === 0) activeViews.push("front");
+  if (activeViews.length === 0) {
+    const baseView =
+      availableViews.value.length > 0 ? availableViews.value[0] : "front";
+    activeViews.push(baseView);
+  }
 
   isEstimatingPricing.value = true;
   try {
@@ -269,7 +273,9 @@ async function estimatePricing() {
     // Distribute the extra cost across the EXTRA placements used
     // Wait, the API returns the total extra_cost. We can just show it on the non-base placements.
     // To be precise, if extra_cost is 5.95 and we have 1 extra placement, it's 5.95 per placement.
-    const extraPlacements = activeViews.filter((v) => v !== "front"); // Assuming front is base
+    const baseView =
+      availableViews.value.length > 0 ? availableViews.value[0] : "front";
+    const extraPlacements = activeViews.filter((v) => v !== baseView); // Assuming first view is base
     let perPlacementCost = 0;
     if (extraPlacements.length > 0 && res.data.extra_cost) {
       perPlacementCost = res.data.extra_cost / extraPlacements.length;
@@ -278,7 +284,7 @@ async function estimatePricing() {
     // Update costs
     const newCosts = {};
     availableViews.value.forEach((view) => {
-      if (view !== "front") {
+      if (view !== baseView) {
         newCosts[view] = perPlacementCost || res.data.extra_cost || 5.95;
         // If we didn't select it yet, we just show the potential cost (or fallback)
       } else {
@@ -291,7 +297,10 @@ async function estimatePricing() {
     // Fallback
     const newCosts = {};
     availableViews.value.forEach((view) => {
-      if (view !== "front") newCosts[view] = 5.95;
+      // baseView is not defined in catch block scope, need to redefine
+      const catchBaseView =
+        availableViews.value.length > 0 ? availableViews.value[0] : "front";
+      if (view !== catchBaseView) newCosts[view] = 5.95;
     });
     dynamicPlacementCosts.value = newCosts;
   } finally {
@@ -357,16 +366,22 @@ const activePlacementsList = computed(() => {
       d.photoElements?.length > 0
     );
   });
-  if (activeViews.length === 0) activeViews.push("front");
+  if (activeViews.length === 0) {
+    const baseView =
+      availableViews.value.length > 0 ? availableViews.value[0] : "front";
+    activeViews.push(baseView);
+  }
   return activeViews.sort().join(",");
 });
 
 const sidebarPlacements = computed(() => {
   const placements = {};
 
+  const baseView =
+    availableViews.value.length > 0 ? availableViews.value[0] : "front";
   availableViews.value.forEach((view) => {
     let price = 0;
-    if (view !== "front") {
+    if (view !== baseView) {
       price = dynamicPlacementCosts.value[view] || 5.95; // Use dynamic cost or fallback
     }
 

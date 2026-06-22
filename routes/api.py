@@ -455,11 +455,10 @@ def estimate_pricing():
 
     payload = {
         "recipient": {
-            "address1": "19749 Dearborn St",
-            "city": "Chatsworth",
-            "country_code": "US",
-            "state_code": "CA",
-            "zipcode": "91311"
+            "address1": "Meir 1",
+            "city": "Antwerp",
+            "country_code": "BE",
+            "zipcode": "2000"
         },
         "items": [
             {
@@ -487,8 +486,9 @@ def estimate_pricing():
 
         url = f'https://api.printful.com/orders/estimate-costs?store_id={store_id}'
         
-        # Request 1: Base cost (front only, or first placement only)
-        base_payload = dict(payload)
+        import copy
+        # Request 1: Base cost (first placement only)
+        base_payload = copy.deepcopy(payload)
         base_payload["items"][0]["files"] = [files[0]] if files else []
         res_base = requests.post(url, headers=headers, json=base_payload)
         res_base.raise_for_status()
