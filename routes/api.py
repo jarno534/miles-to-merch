@@ -348,6 +348,7 @@ def import_product():
                 color_code=v_data.get('color_code'),
                 size=v_data.get('size') or 'One Size',
                 price=base_price,
+                printful_price=float(v_data.get('price', 0.0)) if v_data.get('price') else None,
                 merch_color_type=merch_type,
                 image=v_data.get('image'),
                 image_base_path=None, 

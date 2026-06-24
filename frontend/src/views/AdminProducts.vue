@@ -433,15 +433,15 @@ export default {
     backendAdminUrl() {
       const baseUrl =
         import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
-      return baseUrl + "/admin";
+      return baseUrl.replace(/\/api\/?$/, "") + "/admin/";
     },
     filteredCatalog() {
       if (!this.searchQuery) return this.catalog;
       const q = this.searchQuery.toLowerCase();
       return this.catalog.filter(
         (item) =>
-          item.title.toLowerCase().includes(q) ||
-          item.model.toLowerCase().includes(q)
+          (item.title && item.title.toLowerCase().includes(q)) ||
+          (item.model && item.model.toLowerCase().includes(q))
       );
     },
   },
