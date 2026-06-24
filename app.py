@@ -45,6 +45,12 @@ def ensure_phase3_columns(app):
                     conn.execute(text("ALTER TABLE product ADD COLUMN sponsored_settings JSON"))
                     conn.commit()
                 print("DB migration: Added sponsored_settings to product.")
+                
+            if 'manual_print_areas' not in product_cols:
+                with engine.connect() as conn:
+                    conn.execute(text("ALTER TABLE product ADD COLUMN manual_print_areas JSON"))
+                    conn.commit()
+                print("DB migration: Added manual_print_areas to product.")
 
         except Exception as e:
             print(f"WARNING: ensure_phase3_columns failed (may be OK): {e}")
