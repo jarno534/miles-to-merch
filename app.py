@@ -6,7 +6,6 @@ from routes.auth import auth_bp
 from routes.api import api_bp
 from flask_migrate import Migrate
 import os
-from admin import setup_admin
 from extensions import db, cors
 
 load_dotenv()
