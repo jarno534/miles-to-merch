@@ -56,7 +56,6 @@ def create_app(config_class=Config):
     db.init_app(app)
     migrate.init_app(app, db)
     cors.init_app(app, origins=["https://miles-to-merch.vercel.app", "http://localhost:8081"], supports_credentials=True)
-    setup_admin(app)
     app.register_blueprint(auth_bp)
     app.register_blueprint(api_bp)
     with app.app_context():

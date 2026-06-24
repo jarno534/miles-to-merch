@@ -27,12 +27,6 @@
       <button :class="{ active: activeTab === 'orders' }" @click="fetchOrders">
         Bestellingen
       </button>
-      <button
-        :class="{ active: activeTab === 'advanced' }"
-        @click="activeTab = 'advanced'"
-      >
-        Geavanceerd Systeem
-      </button>
     </div>
 
     <!-- TAB 1: Selected Products (List View) -->
@@ -287,6 +281,7 @@
             <th>Ontwerpen</th>
             <th>Bestellingen</th>
             <th>Admin?</th>
+            <th>Acties</th>
           </tr>
         </thead>
         <tbody>
@@ -302,6 +297,24 @@
             <td>{{ u.created_designs }}</td>
             <td>{{ u.orders_count }}</td>
             <td>{{ u.is_admin ? "Ja" : "Nee" }}</td>
+            <td>
+              <div class="action-buttons">
+                <button
+                  @click="toggleUserAdmin(u)"
+                  class="btn-info-small"
+                  :disabled="u.id === currentUserId"
+                >
+                  {{ u.is_admin ? "Ontneem admin" : "Maak admin" }}
+                </button>
+                <button
+                  @click="deleteUser(u)"
+                  class="btn-danger-small"
+                  :disabled="u.id === currentUserId"
+                >
+                  Verwijder
+                </button>
+              </div>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -320,6 +333,7 @@
             <th>Gebruiker</th>
             <th>Product</th>
             <th>Voorbeeld</th>
+            <th>Acties</th>
           </tr>
         </thead>
         <tbody>
@@ -335,6 +349,11 @@
                 :src="d.preview_urls.front"
                 width="50"
               />
+            </td>
+            <td>
+              <button @click="deleteDesign(d)" class="btn-danger-small">
+                Verwijder
+              </button>
             </td>
           </tr>
         </tbody>
@@ -361,38 +380,27 @@
             <td>#{{ o.id }}</td>
             <td>{{ new Date(o.order_date).toLocaleString() }}</td>
             <td>{{ o.shipping_name || o.user_email }}</td>
-            <td>{{ o.order_status }}</td>
+            <td>
+              <select
+                v-model="o.order_status"
+                @change="updateOrderStatus(o, $event.target.value)"
+                class="form-control"
+              >
+                <option value="Paid">Paid</option>
+                <option value="Submitted to Printful">
+                  Submitted to Printful
+                </option>
+                <option value="Shipped">Shipped</option>
+                <option value="Cancelled">Cancelled</option>
+                <option value="Refunded">Refunded</option>
+                <option value="Failed">Failed</option>
+              </select>
+            </td>
             <td>{{ o.printful_order_id || "Nog niet" }}</td>
             <td>€{{ o.total_price }}</td>
           </tr>
         </tbody>
       </table>
-    </div>
-
-    <!-- TAB 5: Advanced System -->
-    <div v-if="activeTab === 'advanced'" class="tab-content advanced-tab">
-      <h2>Geavanceerd Systeem Beheer</h2>
-      <p>
-        Het systeem heeft een complete backend administratie tool waar je
-        <strong>álles</strong> kunt aanpassen: gebruikers, orders, varianten per
-        maat, ruwe json instellingen, enzovoorts.
-      </p>
-      <div class="warning-box">
-        <strong>Let op:</strong> Als het scherm leeg is of je een "Welcome"
-        bericht ziet, komt dit doordat je browser cookies blokkeert tussen de
-        frontend en de backend. <br /><br />
-        Oplossing: Ga rechtstreeks naar de backend via onderstaande knop. Omdat
-        het een aparte omgeving is, moet je daar eenmalig opnieuw inloggen met
-        je admin e-mail via <strong>/auth/login</strong> voordat je naar
-        <strong>/admin</strong> kunt.
-      </div>
-      <a
-        :href="backendAdminUrl"
-        target="_blank"
-        class="btn btn-primary btn-large"
-      >
-        Open het geavanceerde paneel (Nieuw tabblad)
-      </a>
     </div>
   </div>
 </template>
@@ -428,6 +436,7 @@ export default {
     // Prefetch catalog? Or wait for tab switch?
     // Let's prefetch to be fast
     this.fetchCatalog();
+    this.currentUserId = localStorage.getItem("userId");
   },
   computed: {
     backendAdminUrl() {
@@ -641,6 +650,78 @@ export default {
         console.error("Fetch designs failed", error);
       } finally {
         this.designsLoading = false;
+      }
+    },
+    async toggleUserAdmin(user) {
+      if (
+        !confirm(
+          `Weet je zeker dat je admin rechten voor ${
+            user.name || user.email
+          } wilt wijzigen?`
+        )
+      )
+        return;
+      try {
+        const response = await axios.put(`/api/admin/users/${user.id}`, {
+          is_admin: !user.is_admin,
+        });
+        user.is_admin = response.data.is_admin;
+        // alert(`Rechten succesvol bijgewerkt!`);
+      } catch (error) {
+        console.error("Toggle user admin failed", error);
+        alert(
+          error.response?.data?.error ||
+            "Er ging iets mis bij het updaten van de gebruiker."
+        );
+      }
+    },
+    async deleteUser(user) {
+      if (
+        !confirm(
+          `LET OP: Weet je zeker dat je de gebruiker '${
+            user.name || user.email
+          }' en al hun ontwerpen en bestellingen wilt verwijderen? Dit kan niet ongedaan worden gemaakt!`
+        )
+      )
+        return;
+      try {
+        await axios.delete(`/api/admin/users/${user.id}`);
+        this.usersList = this.usersList.filter((u) => u.id !== user.id);
+        // alert(`Gebruiker succesvol verwijderd.`);
+      } catch (error) {
+        console.error("Delete user failed", error);
+        alert(
+          error.response?.data?.error || "Fout bij verwijderen van gebruiker."
+        );
+      }
+    },
+    async deleteDesign(design) {
+      if (
+        !confirm(
+          `Weet je zeker dat je het ontwerp '${design.name}' wilt verwijderen?`
+        )
+      )
+        return;
+      try {
+        await axios.delete(`/api/designs/${design.id}`);
+        this.designsList = this.designsList.filter((d) => d.id !== design.id);
+      } catch (error) {
+        console.error("Delete design failed", error);
+        alert(
+          error.response?.data?.error || "Fout bij verwijderen van ontwerp."
+        );
+      }
+    },
+    async updateOrderStatus(order, newStatus) {
+      try {
+        await axios.put(`/api/admin/orders/${order.id}/status`, {
+          status: newStatus,
+        });
+        // Feedback via toast could be added here
+        console.log("Order status updated");
+      } catch (error) {
+        console.error("Update order status failed", error);
+        alert("Fout bij updaten van bestelling status");
       }
     },
   },

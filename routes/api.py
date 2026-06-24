@@ -644,7 +644,9 @@ def get_single_design(design_id):
 def delete_design(design_id):
     """Deletes a single design by its ID."""
     design = Design.query.get_or_404(design_id)
-    if design.user_id != session['user_id']:
+    current_user = User.query.get(session['user_id'])
+    
+    if design.user_id != current_user.id and not current_user.is_admin:
         return jsonify({'error': 'Forbidden'}), 403
     
     db.session.delete(design)
@@ -1037,6 +1039,46 @@ def admin_users():
         
     return jsonify(user_list)
 
+@api_bp.route('/admin/users/<int:user_id>', methods=['PUT'])
+@login_required
+def update_admin_user(user_id):
+    current_user = User.query.get(session['user_id'])
+    if not current_user.is_admin:
+        return jsonify({'error': 'Forbidden'}), 403
+        
+    data = request.get_json()
+    target_user = User.query.get_or_404(user_id)
+    
+    # Don't allow removing own admin status to prevent locking out
+    if target_user.id == current_user.id and 'is_admin' in data and not data['is_admin']:
+        return jsonify({'error': 'Cannot remove your own admin privileges'}), 400
+        
+    if 'is_admin' in data:
+        target_user.is_admin = bool(data['is_admin'])
+        
+    db.session.commit()
+    return jsonify(target_user.to_dict())
+
+@api_bp.route('/admin/users/<int:user_id>', methods=['DELETE'])
+@login_required
+def delete_admin_user(user_id):
+    current_user = User.query.get(session['user_id'])
+    if not current_user.is_admin:
+        return jsonify({'error': 'Forbidden'}), 403
+        
+    target_user = User.query.get_or_404(user_id)
+    
+    if target_user.id == current_user.id:
+        return jsonify({'error': 'Je kunt je eigen admin account niet verwijderen.'}), 400
+        
+    try:
+        db.session.delete(target_user)
+        db.session.commit()
+        return jsonify({'message': 'Gebruiker succesvol verwijderd.'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
 @api_bp.route('/admin/orders')
 @login_required
 def admin_orders():
@@ -1055,6 +1097,23 @@ def admin_orders():
         order_list.append(d)
         
     return jsonify(order_list)
+
+@api_bp.route('/admin/orders/<int:order_id>/status', methods=['PUT'])
+@login_required
+def update_admin_order_status(order_id):
+    current_user = User.query.get(session['user_id'])
+    if not current_user.is_admin:
+        return jsonify({'error': 'Forbidden'}), 403
+        
+    data = request.get_json()
+    if 'status' not in data:
+        return jsonify({'error': 'Status is required'}), 400
+        
+    order = Order.query.get_or_404(order_id)
+    order.order_status = data['status']
+    db.session.commit()
+    
+    return jsonify({'message': 'Order status updated', 'order_status': order.order_status})
 
 
 
