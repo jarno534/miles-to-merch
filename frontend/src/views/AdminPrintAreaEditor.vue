@@ -156,32 +156,30 @@ export default {
         if (!p) throw new Error("Product not found");
 
         product.value = p;
-        
+
         const dbPlacements = p.print_areas || {};
         const manualPlacements = p.manual_print_areas || {};
-        
+
         const standardPlacements = {
-          front: { name: 'Front', placement: 'front' },
-          back: { name: 'Back', placement: 'back' },
-          sleeve_left: { name: 'Left Sleeve', placement: 'sleeve_left' },
-          sleeve_right: { name: 'Right Sleeve', placement: 'sleeve_right' },
-          outside_label: { name: 'Outside Label', placement: 'outside_label' },
-          inside_label: { name: 'Inside Label', placement: 'inside_label' }
+          front: { name: "Front", placement: "front" },
+          back: { name: "Back", placement: "back" },
+          sleeve_left: { name: "Left Sleeve", placement: "sleeve_left" },
+          sleeve_right: { name: "Right Sleeve", placement: "sleeve_right" },
+          outside_label: { name: "Outside Label", placement: "outside_label" },
+          inside_label: { name: "Inside Label", placement: "inside_label" },
         };
 
         const merged = { ...standardPlacements, ...dbPlacements };
-        Object.keys(manualPlacements).forEach(key => {
-            if (!merged[key]) {
-               merged[key] = { name: key, placement: key };
-            }
+        Object.keys(manualPlacements).forEach((key) => {
+          if (!merged[key]) {
+            merged[key] = { name: key, placement: key };
+          }
         });
 
         availablePlacements.value = merged;
 
         // Clone existing manual config or start empty
-        manualConfig.value = JSON.parse(
-          JSON.stringify(manualPlacements)
-        );
+        manualConfig.value = JSON.parse(JSON.stringify(manualPlacements));
 
         // Auto-select first placement
         const placements = Object.keys(availablePlacements.value);

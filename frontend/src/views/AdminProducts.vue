@@ -431,7 +431,8 @@ export default {
   },
   computed: {
     backendAdminUrl() {
-      const baseUrl = axios.defaults.baseURL || "https://miles-to-merch-backend.onrender.com";
+      const baseUrl =
+        axios.defaults.baseURL || "https://miles-to-merch-backend.onrender.com";
       return baseUrl.replace(/\/api\/?$/, "") + "/admin/";
     },
     filteredCatalog() {
