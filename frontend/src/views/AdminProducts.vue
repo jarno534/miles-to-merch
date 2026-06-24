@@ -431,8 +431,7 @@ export default {
   },
   computed: {
     backendAdminUrl() {
-      const baseUrl =
-        import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+      const baseUrl = axios.defaults.baseURL || "https://miles-to-merch-backend.onrender.com";
       return baseUrl.replace(/\/api\/?$/, "") + "/admin/";
     },
     filteredCatalog() {

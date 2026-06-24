@@ -27,6 +27,18 @@ def ensure_phase3_columns(app):
                     conn.execute(text("ALTER TABLE variant ADD COLUMN print_areas JSON"))
                     conn.commit()
                 print("DB migration: Added print_areas to variant.")
+            
+            if 'printful_price' not in variant_cols:
+                with engine.connect() as conn:
+                    conn.execute(text("ALTER TABLE variant ADD COLUMN printful_price FLOAT"))
+                    conn.commit()
+                print("DB migration: Added printful_price to variant.")
+
+            if 'in_stock' not in variant_cols:
+                with engine.connect() as conn:
+                    conn.execute(text("ALTER TABLE variant ADD COLUMN in_stock BOOLEAN DEFAULT 1"))
+                    conn.commit()
+                print("DB migration: Added in_stock to variant.")
 
             product_cols = [c['name'] for c in inspector.get_columns('product')]
             if 'sponsored_settings' not in product_cols:
