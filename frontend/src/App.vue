@@ -136,17 +136,19 @@ export default {
         if (errorType === "strava_already_linked") {
           notifyError("This Strava account is already linked to another user.");
         } else if (errorType === "internal_db_error") {
-          notifyError("An internal database error occurred while linking Strava.");
+          notifyError(
+            "An internal database error occurred while linking Strava."
+          );
         }
-        
+
         // Remove error from URL without refreshing
         if (errorType) {
           const query = { ...this.$route.query };
           delete query.error;
           this.$router.replace({ query }).catch(() => {});
         }
-      }
-    }
+      },
+    },
   },
   async created() {
     await auth.checkAuthStatus();
