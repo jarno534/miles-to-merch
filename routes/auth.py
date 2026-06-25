@@ -134,6 +134,10 @@ def strava_callback():
     athlete_info = token_data.get('athlete', {})
     strava_id = str(athlete_info.get('id'))
 
+    next_url = session.pop('strava_redirect_next', '/activities')
+    if not next_url.startswith('/'):
+        next_url = f"/{next_url}"
+
     user = None
     if 'user_id' in session:
         user = User.query.get(session['user_id'])
@@ -160,7 +164,7 @@ def strava_callback():
     if existing_strava_user and existing_strava_user.id != user.id:
         print(f"Strava ID {strava_id} is already linked to user {existing_strava_user.email}")
         frontend_url = current_app.config.get('FRONTEND_URL')
-        return redirect(f"{frontend_url}/profile?error=strava_already_linked")
+        return redirect(f"{frontend_url}{next_url}?error=strava_already_linked")
 
     user.strava_id = strava_id
     user.strava_name = f"{athlete_info.get('firstname', '')} {athlete_info.get('lastname', '')}".strip()
@@ -178,10 +182,10 @@ def strava_callback():
         db.session.rollback()
         print(f"Database error in strava_callback: {e}")
         frontend_url = current_app.config.get('FRONTEND_URL')
-        return redirect(f"{frontend_url}/profile?error=internal_db_error")
+        return redirect(f"{frontend_url}{next_url}?error=internal_db_error")
 
     session['user_id'] = user.id
     print(f"Session set for user ID: {user.id}. Admin status: {user.is_admin}")
 
     frontend_url = current_app.config.get('FRONTEND_URL')
-    return redirect(f"{frontend_url}/activities")
+    return redirect(f"{frontend_url}{next_url}")
