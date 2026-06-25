@@ -80,6 +80,13 @@ const routes = [
     component: () => import("../views/AdminProducts.vue"),
     meta: { requiresAuth: true, requiresAdmin: true },
   },
+  {
+    path: "/admin/product/:id/canvas",
+    name: "AdminPrintAreaEditor",
+    component: () => import("../views/AdminPrintAreaEditor.vue"),
+    props: true,
+    meta: { requiresAuth: true, requiresAdmin: true },
+  },
 ];
 
 const router = createRouter({
