@@ -149,7 +149,7 @@ export default {
 
     const fetchProduct = async () => {
       try {
-        const response = await api.get("/admin/products");
+        const response = await api.get("/api/admin/products");
         const productId = parseInt(route.params.id);
         const p = response.data.find((prod) => prod.id === productId);
 
@@ -367,7 +367,7 @@ export default {
       saving.value = true;
       try {
         await api.post(
-          `/admin/products/${product.value.id}/manual_print_areas`,
+          `/api/admin/products/${product.value.id}/manual_print_areas`,
           {
             manual_print_areas: manualConfig.value,
           }
