@@ -118,7 +118,7 @@
 <script>
 import { ref, computed, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import api from "../api";
+import api from "@/apiConfig.js";
 
 export default {
   name: "AdminPrintAreaEditor",
