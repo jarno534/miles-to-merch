@@ -83,7 +83,6 @@
             :src="previewImageUrl"
             @load="onImageLoad"
             class="background-preview"
-            crossorigin="anonymous"
           />
           <div
             v-if="currentConfig && dimensionsLoaded"
